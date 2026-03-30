@@ -1,0 +1,658 @@
+# Copyright 2026 OnRentX
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+
+"""
+WhatsApp Chatbot for Recruitment Pre-screening.
+
+State machine:
+  idle → contacto_inicial → esperando_jcf → prescreening (q1..q7)
+  → prescreening_eval → [pasa: cuestionario_enviado | no_pasa: rechazado]
+
+Triggered from Odoo button "Iniciar Contacto WA".
+Responses handled by webhook in interview_webhooks.py.
+"""
+
+import json
+import logging
+import re
+import time
+
+import requests
+from markupsafe import Markup
+
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
+
+WASENDER_API_URL = "https://wasenderapi.com/api/send-message"
+LITELLM_URL = "http://159.54.142.132:4000/v1/chat/completions"
+LITELLM_KEY = "sk-orx-kAErmWcz1m0tGrS7IsQ4BmALzaAzeeXo"
+LITELLM_MODEL = "groq-llama"
+
+WA_CHAT_STATES = [
+    ("idle", "Sin contactar"),
+    ("contacto_inicial", "Contacto inicial enviado"),
+    ("prescreening", "Pre-screening en curso"),
+    ("prescreening_eval", "Evaluando pre-screening"),
+    ("pasa_pendiente_jcf", "Pasa - Pendiente comprobante JCF"),
+    ("listo_entrevista", "Listo para entrevista"),
+    ("rechazado", "Rechazado en pre-screening"),
+]
+
+
+class HrApplicantChatbot(models.Model):
+    _inherit = "hr.applicant"
+
+    wa_chat_state = fields.Selection(
+        WA_CHAT_STATES,
+        string="Estado chatbot WA",
+        default="idle",
+        tracking=True,
+    )
+    wa_chat_data = fields.Text(
+        string="Datos chatbot WA (JSON)",
+        default="{}",
+    )
+
+    def _get_wa_data(self):
+        """Get chat data as dict."""
+        try:
+            return json.loads(self.wa_chat_data or "{}")
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
+    def _set_wa_data(self, data):
+        """Save chat data as JSON."""
+        self.wa_chat_data = json.dumps(data, ensure_ascii=False)
+
+    def _get_wasender_config(self):
+        """Get WASender config - prefer San Luis, then Queretaro, skip Leon (logged out)."""
+        # Try San Luis first (id=4), then Queretaro (id=3), then Leon (id=2)
+        for config_name in ["San Luis", "Queretaro", "Leon"]:
+            config = self.env["onrentx.wasender.config"].search([
+                ("name", "ilike", config_name),
+            ], limit=1)
+            if config and config.api_key:
+                return config
+        # Fallback: any config with api_key
+        return self.env["onrentx.wasender.config"].search([
+            ("api_key", "!=", False),
+        ], limit=1)
+
+    def _send_wa_with_config(self, phone, message, config):
+        """Send WhatsApp message via WASender API with specific config."""
+        if not config or not config.api_key:
+            _logger.error("No WASender config with api_key")
+            return False
+
+        clean_phone = re.sub(r'[^\d+]', '', phone)
+        if not clean_phone.startswith("+"):
+            clean_phone = "+52" + clean_phone
+
+        try:
+            url = "https://wasenderapi.com/api/send-message"
+            resp = requests.post(
+                url,
+                json={"to": clean_phone, "text": message},
+                headers={
+                    "Authorization": "Bearer %s" % config.api_key,
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
+            success = resp.status_code in (200, 201)
+            if success:
+                _logger.info("WA bot sent to %s via %s: %s", clean_phone, config.name, message[:50])
+            else:
+                _logger.error("WA bot send failed via %s: %s %s", config.name, resp.status_code, resp.text[:200])
+
+            # Log to chatter
+            body = Markup(
+                '<div style="background:#dcf8c6;padding:8px 12px;border-radius:8px;'
+                'border-left:4px solid #25D366;margin:4px 0;">'
+                '<b>🤖 Bot WA enviado</b> (%s) → %s<br/>%s</div>'
+            ) % (config.name, clean_phone, message.replace('\n', '<br/>'))
+            self.with_user(1).message_post(
+                body=body,
+                message_type="comment",
+                subtype_xmlid="mail.mt_note",
+            )
+            return success
+        except Exception as e:
+            _logger.error("WA bot send error: %s", e)
+            return False
+
+    def _send_wa(self, phone, message):
+        """Send WA using the config saved in wa_chat_data, or fallback."""
+        data = self._get_wa_data()
+        config_id = data.get("wasender_config_id")
+        config = None
+        if config_id:
+            config = self.env["onrentx.wasender.config"].browse(config_id)
+        if not config or not config.exists() or not config.api_key:
+            config = self._get_wasender_config()
+        return self._send_wa_with_config(phone, message, config)
+
+    def _call_llm(self, prompt, max_tokens=2000):
+        """Call LiteLLM (Groq) and return response text."""
+        import urllib.request
+        try:
+            payload = json.dumps({
+                "model": LITELLM_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": 0.3,
+            })
+            req = urllib.request.Request(LITELLM_URL, method="POST")
+            req.add_header("Content-Type", "application/json")
+            req.add_header("Authorization", "Bearer %s" % LITELLM_KEY)
+            req.data = payload.encode()
+            resp = urllib.request.urlopen(req, timeout=60)
+            result = json.loads(resp.read())
+            return result["choices"][0]["message"]["content"]
+        except Exception as e:
+            _logger.error("LLM call failed: %s", e)
+            return None
+
+    # ─── Actions from Odoo UI ───
+
+    def action_start_wa_contact(self):
+        """Button: Open wizard to choose sender then start chatbot."""
+        self.ensure_one()
+
+        if not self.partner_phone:
+            raise UserError(_("Este candidato no tiene número de teléfono."))
+
+        if self.wa_chat_state not in ("idle", "rechazado"):
+            raise UserError(_(
+                "El chatbot ya está en estado '%s'. "
+                "Use 'Reiniciar Chatbot' para empezar de nuevo."
+            ) % dict(WA_CHAT_STATES).get(self.wa_chat_state, self.wa_chat_state))
+
+        return {
+            "name": _("Iniciar Pre-screening WhatsApp"),
+            "type": "ir.actions.act_window",
+            "res_model": "wa.chatbot.start.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_applicant_id": self.id,
+            },
+        }
+
+    def _start_wa_chatbot(self, wasender_config):
+        """Actually start the chatbot with the selected sender config."""
+        self.ensure_one()
+
+        # Store selected config for this conversation
+        data = self._get_wa_data()
+        data["wasender_config_id"] = wasender_config.id
+        data["conversation"] = []
+        data["turn_count"] = 0
+        self._set_wa_data(data)
+
+        # Send first message - go straight to screening
+        job_name = self.job_id.name if self.job_id else "una vacante"
+        candidate_name = self.partner_name or "candidato/a"
+
+        msg = (
+            "Hola %s 👋 Soy el asistente de reclutamiento de OnRentX, "
+            "plataforma de renta de maquinaria pesada en México.\n\n"
+            "Vi tu postulación para *%s* y tus respuestas al cuestionario. "
+            "Me gustaría platicar un poco más contigo sobre el puesto. "
+            "Son unos 5 minutos. ¿Estás disponible?\n\n"
+            "📌 _Dato: para la entrevista presencial necesitarás estar registrado "
+            "en Jóvenes Construyendo el Futuro (jovenesconstruyendoelfuturo.stps.gob.mx). "
+            "Ve preparándolo si aún no lo tienes._"
+        ) % (candidate_name, job_name)
+
+        if self._send_wa_with_config(self.partner_phone, msg, wasender_config):
+            self.wa_chat_state = "contacto_inicial"
+        else:
+            raise UserError(_("Error enviando WhatsApp. Verifique el número y la configuración de WASender."))
+
+    def action_reset_wa_chatbot(self):
+        """Reset chatbot state to allow re-contact."""
+        self.ensure_one()
+        self.wa_chat_state = "idle"
+        self._set_wa_data({})
+        self.message_post(
+            body=Markup('<div style="background:#fff3e0;padding:8px;border-left:4px solid #FF9800;border-radius:6px;">'
+                        '<b>🔄 Chatbot WA reiniciado</b></div>'),
+            message_type="comment",
+            subtype_xmlid="mail.mt_note",
+        )
+
+    # ─── Candidate context builder ───
+
+    def _build_candidate_context(self):
+        """Build full context about candidate for LLM conversations."""
+        job = self.job_id
+        job_name = job.name if job else "No especificado"
+        job_desc = ""
+        if job and job.website_description:
+            job_desc = re.sub(r'<[^>]+>', '', job.website_description)[:2000]
+
+        # CV info
+        cv_text = "[Sin CV]"
+        attachments = self.env["ir.attachment"].sudo().search([
+            ("res_model", "=", "hr.applicant"),
+            ("res_id", "=", self.id),
+            ("mimetype", "=", "application/pdf"),
+        ], limit=1)
+        if attachments:
+            cv_text = "[CV adjunto: %s]" % attachments[0].name
+
+        # Survey responses
+        survey_text = ""
+        try:
+            responses = self.response_ids.filtered(lambda r: r.state == "done")
+            if responses:
+                for line in responses[0].user_input_line_ids:
+                    q = line.question_id.title if line.question_id else "?"
+                    a = ""
+                    if line.suggested_answer_id:
+                        a = line.suggested_answer_id.value
+                    elif line.value_text_box:
+                        a = line.value_text_box
+                    elif line.value_char_box:
+                        a = line.value_char_box
+                    if a:
+                        survey_text += "P: %s\nR: %s\n" % (q, a)
+        except Exception:
+            pass
+        if not survey_text:
+            survey_text = "[Sin cuestionario completado]"
+
+        return {
+            "job_name": job_name,
+            "job_desc": job_desc,
+            "cv": cv_text,
+            "survey": survey_text,
+            "candidate_name": self.partner_name or "Candidato",
+        }
+
+    # ─── Incoming message handler (called from webhook) ───
+
+    def handle_wa_incoming(self, text):
+        """Process incoming WA message based on current chat state."""
+        # Lock the row to prevent race conditions from duplicate webhooks
+        self.env.cr.execute(
+            "SELECT wa_chat_state FROM hr_applicant WHERE id = %s FOR UPDATE NOWAIT",
+            [self.id]
+        )
+        row = self.env.cr.fetchone()
+        state = row[0] if row else self.wa_chat_state
+
+        # Skip if already in terminal state or evaluating
+        if state in ("rechazado", "prescreening_eval", "pasa_pendiente_jcf", "listo_entrevista", "idle"):
+            _logger.info("Chatbot skip: applicant %d already in state %s", self.id, state)
+            return
+
+        data = self._get_wa_data()
+
+        if state == "contacto_inicial":
+            # Candidate responded to first message → start screening
+            data["conversation"] = []
+            data["turn_count"] = 0
+            self._set_wa_data(data)
+            self.wa_chat_state = "prescreening"
+            self.env.cr.commit()
+            self._send_wa(
+                self.partner_phone,
+                "Perfecto, ¡vamos! 💪"
+            )
+            import time
+            time.sleep(6)  # WASender rate limit: 1 msg per 5 seconds
+            self._send_next_conversational_turn(data)
+        elif state == "prescreening":
+            self._handle_conversational_turn(text, data)
+        elif state == "pasa_pendiente_jcf":
+            # Check if they're sending JCF confirmation
+            self._send_wa(
+                self.partner_phone,
+                "Gracias por tu mensaje. Si ya tienes tu registro JCF, "
+                "envíanos una captura de pantalla o foto del comprobante por aquí. "
+                "En cuanto lo verifiquemos te enviamos el link para agendar tu entrevista. 📅"
+            )
+        elif state in ("listo_entrevista",):
+            self._send_wa(
+                self.partner_phone,
+                "Gracias por tu mensaje. Tu proceso de selección está en curso. "
+                "Te avisaremos de los siguientes pasos pronto. 📋"
+            )
+
+    def _handle_jcf_response(self, text, data):
+        """Handle JCF registration confirmation."""
+        text_lower = text.lower().strip()
+        negative = any(w in text_lower for w in ["no", "aún no", "todavia", "aun no"])
+
+        if negative:
+            self._send_wa(
+                self.partner_phone,
+                "Para continuar necesitas registrarte en el programa JCF.\n\n"
+                "📌 Regístrate aquí: jovenesconstruyendoelfuturo.stps.gob.mx\n\n"
+                "Cuando estés registrado/a, escríbenos y continuamos con el proceso. 👍"
+            )
+        else:
+            # Start conversational pre-screening
+            data["conversation"] = []
+            data["turn_count"] = 0
+            self._set_wa_data(data)
+            self.wa_chat_state = "prescreening"
+
+            self._send_wa(
+                self.partner_phone,
+                "Perfecto ✅ Ahora platicaremos un poco sobre tu experiencia "
+                "y el puesto. Son unos 5 min. ¡Vamos! 💪"
+            )
+
+            # Generate first question based on full context
+            self._send_next_conversational_turn(data)
+
+    def _handle_conversational_turn(self, text, data):
+        """Handle a conversational turn during pre-screening."""
+        conversation = data.get("conversation", [])
+        turn_count = data.get("turn_count", 0)
+
+        # Save candidate's response
+        conversation.append({"role": "candidate", "text": text})
+        turn_count += 1
+        data["conversation"] = conversation
+        data["turn_count"] = turn_count
+        self._set_wa_data(data)
+
+        # After 5-7 turns, evaluate
+        if turn_count >= 5:
+            # Ask LLM if we have enough info or need more
+            should_continue = self._should_continue_screening(data)
+            if not should_continue or turn_count >= 7:
+                self.wa_chat_state = "prescreening_eval"
+                self._send_wa(
+                    self.partner_phone,
+                    "Gracias por la plática 🙏\n\n"
+                    "Estamos evaluando tu perfil. Te avisaremos los siguientes pasos pronto."
+                )
+                self._evaluate_conversational_screening(data)
+                return
+
+        # Generate next question based on conversation so far
+        self._send_next_conversational_turn(data)
+
+    def _send_next_conversational_turn(self, data):
+        """Generate and send next conversational question using LLM."""
+        context = self._build_candidate_context()
+        conversation = data.get("conversation", [])
+        turn_count = data.get("turn_count", 0)
+
+        # Build conversation history for LLM
+        conv_text = ""
+        for msg in conversation:
+            role = "Candidato" if msg["role"] == "candidate" else "Bot"
+            conv_text += "%s: %s\n" % (role, msg["text"])
+
+        prompt = """Eres el asistente de reclutamiento de OnRentX por WhatsApp. Estás haciendo pre-screening a un candidato.
+
+CONTEXTO DEL PUESTO:
+- Puesto: %s
+- Descripción: %s
+
+DATOS DEL CANDIDATO:
+- Nombre: %s
+- CV: %s
+- Cuestionario previo:
+%s
+
+CONVERSACIÓN HASTA AHORA:
+%s
+
+TURNO ACTUAL: %d de 5-7
+
+INSTRUCCIONES:
+- Genera LA SIGUIENTE PREGUNTA basándote en lo que el candidato ha dicho hasta ahora.
+- Si el candidato dio una respuesta vaga, profundiza pidiendo un ejemplo concreto.
+- Si mencionó algo interesante, pregunta más detalles.
+- Si el cuestionario tiene info, cruza con lo que dice en la conversación.
+- Las preguntas deben ser naturales, como una conversación por WhatsApp (cortas, directas).
+- NO repitas preguntas que ya hiciste.
+- Evalúa requisitos del puesto que aún no se han tocado.
+- Si es el primer turno, empieza preguntando por su experiencia más relevante para el puesto.
+
+Responde SOLO con la pregunta (1-3 líneas máximo), sin explicaciones ni prefijos.""" % (
+            context["job_name"],
+            context["job_desc"][:1000],
+            context["candidate_name"],
+            context["cv"],
+            context["survey"][:800],
+            conv_text,
+            turn_count + 1,
+        )
+
+        _logger.info("Calling LLM for next question (applicant %d, turn %d)...", self.id, data.get("turn_count", 0))
+        response = self._call_llm(prompt, max_tokens=200)
+        if response:
+            question = response.strip().strip('"').strip("'")
+            _logger.info("LLM generated question: %s", question[:80])
+            # Save bot's question in conversation
+            data["conversation"].append({"role": "bot", "text": question})
+            self._set_wa_data(data)
+            # Commit before sending WA to ensure state is saved
+            self.env.cr.commit()
+            sent = self._send_wa(self.partner_phone, question)
+            _logger.info("WA send result: %s", sent)
+        else:
+            _logger.error("LLM failed to generate question for applicant %d", self.id)
+
+    def _should_continue_screening(self, data):
+        """Ask LLM if we have enough info or need more questions."""
+        context = self._build_candidate_context()
+        conversation = data.get("conversation", [])
+
+        conv_text = "\n".join([
+            "%s: %s" % ("Candidato" if m["role"] == "candidate" else "Bot", m["text"])
+            for m in conversation
+        ])
+
+        prompt = """Basándote en esta conversación de pre-screening para el puesto de "%s", ¿tenemos suficiente información para evaluar al candidato o necesitamos más preguntas?
+
+Conversación:
+%s
+
+Requisitos del puesto:
+%s
+
+Responde SOLO "SI" si necesitamos más preguntas, o "NO" si ya tenemos suficiente.""" % (
+            context["job_name"], conv_text, context["job_desc"][:500]
+        )
+
+        response = self._call_llm(prompt, max_tokens=10)
+        if response:
+            return "si" in response.lower().strip()
+        return False
+
+    def _evaluate_conversational_screening(self, data):
+        """Evaluate the full conversational pre-screening."""
+        context = self._build_candidate_context()
+        conversation = data.get("conversation", [])
+
+        conv_text = "\n".join([
+            "%s: %s" % ("Candidato" if m["role"] == "candidate" else "Entrevistador", m["text"])
+            for m in conversation
+        ])
+
+        prompt = """Evalúa la conversación de pre-screening por WhatsApp de este candidato para el puesto de "%s" en OnRentX.
+
+PUESTO: %s
+DESCRIPCIÓN: %s
+CV: %s
+CUESTIONARIO PREVIO:
+%s
+
+CONVERSACIÓN COMPLETA:
+%s
+
+EVALÚA:
+1. Score por cada requisito del puesto (1-5) con evidencia de la conversación (cita textual)
+2. Score general (1-5)
+3. Banderas rojas (respuestas vagas, inconsistencias con cuestionario, problemas JCF/ubicación/edad)
+4. Veredicto: PASA (score >= 3) / NO PASA (score < 3) / CON RESERVAS
+
+Responde en formato JSON:
+{
+  "scores": [{"requirement": "requisito del puesto", "score": X, "evidence": "cita textual del candidato"}],
+  "overall_score": X,
+  "red_flags": ["flag1", "flag2"],
+  "verdict": "PASA|NO_PASA|CON_RESERVAS",
+  "summary": "resumen en 2 líneas"
+}""" % (
+            context["job_name"], context["job_name"],
+            context["job_desc"][:1000], context["cv"],
+            context["survey"][:800], conv_text,
+        )
+
+        response = self._call_llm(prompt, max_tokens=1000)
+        if not response:
+            _logger.error("Pre-screening eval LLM failed for applicant %d", self.id)
+            return
+
+        try:
+            match = re.search(r'\{.*\}', response, re.DOTALL)
+            if match:
+                eval_data = json.loads(match.group())
+            else:
+                eval_data = {"verdict": "CON_RESERVAS", "overall_score": 3, "summary": "Error en evaluación"}
+        except (json.JSONDecodeError, TypeError):
+            eval_data = {"verdict": "CON_RESERVAS", "overall_score": 3, "summary": "Error parsing evaluación"}
+
+        verdict = eval_data.get("verdict", "CON_RESERVAS")
+        overall_score = eval_data.get("overall_score", 3)
+        summary = eval_data.get("summary", "")
+        red_flags = eval_data.get("red_flags", [])
+        scores = eval_data.get("scores", [])
+
+        # Build HTML for chatter
+        body_html = (
+            '<div style="background:#e8eaf6;padding:12px;'
+            'border-left:4px solid #3F51B5;border-radius:8px;">'
+            '<h4>🤖 Evaluación Pre-screening WA</h4>'
+            '<p><b>Puesto:</b> %s | <b>Score:</b> %s/5 | '
+            '<b>Veredicto: %s</b></p>'
+        ) % (context["job_name"], overall_score, verdict)
+
+        if scores:
+            body_html += '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;width:100%%;">'
+            body_html += '<tr style="background:#f0f0f0;"><th>Requisito</th><th>Score</th><th>Evidencia</th></tr>'
+            for s in scores:
+                body_html += '<tr><td>%s</td><td>%s/5</td><td>%s</td></tr>' % (
+                    s.get("requirement", s.get("question", "?")),
+                    s.get("score", "?"),
+                    s.get("evidence", s.get("reason", ""))
+                )
+            body_html += '</table>'
+
+        if red_flags:
+            body_html += '<h4>Banderas rojas:</h4><ul>'
+            for flag in red_flags:
+                body_html += '<li>%s</li>' % flag
+            body_html += '</ul>'
+
+        if summary:
+            body_html += '<p><b>Resumen:</b> %s</p>' % summary
+
+        body_html += '</div>'
+
+        self.with_user(1).message_post(
+            body=Markup(body_html),
+            message_type="comment",
+            subtype_xmlid="mail.mt_note",
+        )
+
+        # Score-based decision (minimum 3/5 to pass)
+        MIN_SCORE = 3.0
+        try:
+            score_num = float(overall_score)
+        except (ValueError, TypeError):
+            score_num = 0
+
+        # Calculate ranking for this position
+        ranking_text = ""
+        if self.job_id:
+            other_passed = self.env["hr.applicant"].sudo().search([
+                ("job_id", "=", self.job_id.id),
+                ("id", "!=", self.id),
+                ("wa_chat_state", "in", ["pasa_pendiente_jcf", "listo_entrevista"]),
+            ])
+            total_for_job = len(other_passed) + (1 if score_num >= MIN_SCORE else 0)
+            if total_for_job > 0:
+                ranking_text = " | Candidatos que pasan para %s: %d" % (
+                    self.job_id.name, total_for_job
+                )
+
+        # Add ranking to chatter
+        if ranking_text:
+            self.with_user(1).message_post(
+                body=Markup(
+                    '<div style="background:#e3f2fd;padding:8px;border-left:4px solid #2196F3;border-radius:6px;">'
+                    '<b>📊 Ranking:</b> Score %s/5%s</div>'
+                ) % (overall_score, ranking_text),
+                message_type="comment",
+                subtype_xmlid="mail.mt_note",
+            )
+
+        if score_num < MIN_SCORE or verdict == "NO_PASA":
+            self.wa_chat_state = "rechazado"
+            self._send_wa(
+                self.partner_phone,
+                "Hola %s, agradecemos mucho tu interés en OnRentX.\n\n"
+                "Después de revisar tu perfil, en esta ocasión no continuaremos "
+                "con el proceso para este puesto.\n\n"
+                "Te deseamos mucho éxito en tu búsqueda. 🙏" % (self.partner_name or "")
+            )
+        else:
+            # PASA (score >= 3) → pedir comprobante JCF
+            self.wa_chat_state = "pasa_pendiente_jcf"
+            self._send_wa(
+                self.partner_phone,
+                "¡Muy bien %s! 🎉 Has pasado el pre-screening.\n\n"
+                "El siguiente paso es agendar tu entrevista presencial. "
+                "Para eso necesitamos que nos envíes tu *comprobante de registro* "
+                "en Jóvenes Construyendo el Futuro.\n\n"
+                "📌 Si aún no te has registrado: jovenesconstruyendoelfuturo.stps.gob.mx\n\n"
+                "Cuando lo tengas, envíanos una captura de pantalla o foto por aquí. 📸"
+                % (self.partner_name or "")
+            )
+
+        _logger.info(
+            "Pre-screening eval for %d (%s): %s (score=%s)",
+            self.id, self.partner_name, verdict, overall_score,
+        )
+
+    def _get_job_survey(self):
+        """Get survey linked to this job position."""
+        if self.job_id:
+            # Check if job has a survey configured
+            try:
+                if hasattr(self.job_id, 'survey_id') and self.job_id.survey_id:
+                    return self.job_id.survey_id
+            except Exception:
+                pass
+            # Search by name pattern
+            survey = self.env["survey.survey"].search([
+                ("title", "ilike", self.job_id.name),
+            ], limit=1)
+            return survey
+        return None
+
+    def _send_survey_invite(self, survey):
+        """Send survey invitation to candidate."""
+        partner = self._get_or_create_partner()
+        try:
+            invite = self.env["survey.invite"].create({
+                "survey_id": survey.id,
+                "partner_ids": [(6, 0, [partner.id])],
+            })
+            invite.action_invite()
+            _logger.info("Survey invite sent to %s for %s", partner.name, survey.title)
+        except Exception as e:
+            _logger.error("Failed to send survey invite: %s", e)

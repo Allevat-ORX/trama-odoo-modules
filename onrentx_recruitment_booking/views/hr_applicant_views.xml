@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 OnRentX -->
+<odoo>
+    <record id="hr_applicant_view_form_booking" model="ir.ui.view">
+        <field name="name">hr.applicant.form.booking</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_applicant_view_form"/>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <!-- Booking smart button in button box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_booking"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-calendar-check-o"
+                        invisible="not booking_id">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Entrevista</span>
+                        <span class="o_stat_value">
+                            <field name="booking_state" readonly="1"/>
+                        </span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- Hidden fields -->
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="booking_id" invisible="1"/>
+                <field name="booking_start" invisible="1"/>
+                <field name="wa_chat_data" invisible="1"/>
+            </xpath>
+
+            <!-- Add Entrevista + Chatbot tab -->
+            <xpath expr="//page[@name='application_details']" position="after">
+                <page string="Entrevista" name="interview_page">
+                    <group>
+                        <group string="Chatbot WA Pre-screening">
+                            <field name="wa_chat_state" readonly="1"
+                                   widget="badge"
+                                   decoration-info="wa_chat_state == 'contacto_inicial'"
+                                   decoration-warning="wa_chat_state in ('prescreening', 'prescreening_eval')"
+                                   decoration-success="wa_chat_state in ('pasa_pendiente_jcf', 'listo_entrevista')"
+                                   decoration-muted="wa_chat_state == 'atendido_humano'"
+                                   decoration-danger="wa_chat_state == 'rechazado'"/>
+                            <button name="action_start_wa_contact"
+                                    string="Iniciar Contacto WA"
+                                    type="object"
+                                    class="btn-success"
+                                    invisible="wa_chat_state not in ('idle', 'rechazado')"
+                                    icon="fa-whatsapp"
+                                    confirm="Se enviará un WhatsApp al candidato iniciando el proceso de pre-screening. ¿Continuar?"/>
+                            <button name="action_confirm_jcf"
+                            <button name="action_pause_wa_chatbot"
+                                    string="Pausar Chatbot"
+                                    type="object"
+                                    class="btn-warning"
+                                    invisible="wa_chat_state not in ('idle', 'rechazado', 'atendido_humano')"
+                                    icon="fa-pause"
+                                    confirm="Se pausará el chatbot. El candidato no recibirá respuestas automáticas hasta que se reactive. ¿Continuar?"/>
+                            <button name="action_resume_wa_chatbot"
+                                    string="Reactivar Chatbot"
+                                    type="object"
+                                    class="btn-success"
+                                    invisible="wa_chat_state != 'atendido_humano'"
+                                    icon="fa-play"/>
+                                    string="✅ Confirmar JCF y Enviar Cita"
+                                    type="object"
+                                    class="btn-success"
+                                    invisible="wa_chat_state != 'pasa_pendiente_jcf'"
+                                    icon="fa-check-circle"
+                                    confirm="Se verificará el JCF, se creará la cita y se enviará el link al candidato por email y WhatsApp. ¿Continuar?"/>
+                            <button name="action_reset_wa_chatbot"
+                                    string="Reiniciar Chatbot"
+                                    type="object"
+                                    class="btn-warning"
+                                    invisible="wa_chat_state == 'idle'"
+                                    icon="fa-refresh"
+                                    confirm="Se reiniciará el chatbot. El candidato podrá ser contactado de nuevo. ¿Continuar?"/>
+                        </group>
+                        <group string="Cita de Entrevista">
+                            <field name="booking_state" readonly="1"
+                                   widget="badge"
+                                   decoration-info="booking_state == 'pending'"
+                                   decoration-warning="booking_state == 'scheduled'"
+                                   decoration-success="booking_state == 'confirmed'"
+                                   decoration-muted="wa_chat_state == 'atendido_humano'"
+                                   decoration-danger="booking_state == 'canceled'"/>
+                            <field name="booking_start" readonly="1"/>
+                            <field name="booking_portal_url" widget="CopyClipboardChar"
+                                   readonly="1"
+                                   invisible="not booking_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Acciones Entrevista">
+                            <button name="action_create_interview_booking"
+                                    string="Crear Cita y Enviar Email"
+                                    type="object"
+                                    class="btn-primary"
+                                    icon="fa-calendar-plus-o"/>
+                            <button name="action_copy_booking_url"
+                                    string="Copiar URL para candidato"
+                                    type="object"
+                                    class="btn-secondary"
+                                    invisible="not booking_id"
+                                    icon="fa-clipboard"/>
+                            <button name="action_cancel_interview_booking"
+                                    string="Cancelar Cita"
+                                    type="object"
+                                    class="btn-danger"
+                                    invisible="not booking_id"
+                                    confirm="Se cancelará la cita de entrevista. ¿Continuar?"
+                                    icon="fa-times"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

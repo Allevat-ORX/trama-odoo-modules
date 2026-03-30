@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="wa_chatbot_start_wizard_form" model="ir.ui.view">
+        <field name="name">wa.chatbot.start.wizard.form</field>
+        <field name="model">wa.chatbot.start.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Iniciar Pre-screening WhatsApp">
+                <group>
+                    <field name="applicant_id" invisible="1"/>
+                    <field name="wasender_config_id" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button string="Enviar" name="action_start" type="object" class="btn-primary" icon="fa-whatsapp"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="mail_template_interview_reschedule" model="mail.template">
+        <field name="name">Recruitment: Reschedule Interview</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="subject">OnRentX - Reagenda tu entrevista: {{ object.job_id.name or '' }}</field>
+        <field name="email_from">alazcano@onrentx.com</field>
+        <field name="email_to">{{ object.email_from or '' }}</field>
+        <field name="body_html"><![CDATA[
+<div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+    <div style="background: linear-gradient(135deg, #E8590C 0%, #D14800 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: #fff; margin: 0; font-size: 28px; letter-spacing: 1px;">OnRentX</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 5px 0 0 0; font-size: 13px;">Plataforma de renta de maquinaria en M&#233;xico</p>
+    </div>
+    <div style="background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+        <p style="font-size: 15px; line-height: 1.6;">
+            Hola <b><t t-out="object.partner_name or 'candidato/a'">candidato/a</t></b>,
+        </p>
+        <p style="font-size: 14px; line-height: 1.6;">
+            Tu entrevista para el puesto de <b><t t-out="object.job_id.name or ''">Puesto</t></b> ha sido reagendada.
+            Por favor elige un nuevo horario que te funcione:
+        </p>
+        <div style="text-align: center; margin: 25px 0;">
+            <t t-if="object.booking_portal_url">
+                <a t-att-href="object.booking_portal_url" style="background-color: #FF9800; padding: 14px 35px; text-decoration: none; color: #fff; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">
+                    Elegir Nuevo Horario
+                </a>
+            </t>
+        </div>
+        <p style="text-align: center; font-size: 12px; color: #666;">
+            Usa tu nombre y correo con el que te postulaste: <b><t t-out="object.partner_name or ''">nombre</t></b>
+        </p>
+        <p style="font-size: 14px; margin-top: 25px;">&#161;Te esperamos!</p>
+        <p style="font-size: 14px;"><b>Equipo de Reclutamiento - OnRentX</b><br/>
+        <span style="font-size: 12px; color: #666;">alazcano@onrentx.com &#183; +52 444 165 0897</span></p>
+    </div>
+    <div style="background: #1a1a1a; padding: 20px 30px; text-align: center; border-radius: 0 0 8px 8px;">
+        <p style="color: #fff; margin: 0 0 5px 0; font-size: 14px; font-weight: bold;">OnRentX</p>
+        <p style="color: #777; margin: 0; font-size: 11px;">San Luis Potos&#237;, M&#233;xico &#183; onrentx.com</p>
+    </div>
+</div>
+]]></field>
+    </record>
+</odoo>

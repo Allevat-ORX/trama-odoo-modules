@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_resource_booking_hr_officer,resource.booking.hr.officer,resource_booking.model_resource_booking,hr_recruitment.group_hr_recruitment_user,1,1,1,0
+access_resource_booking_type_hr_officer,resource.booking.type.hr.officer,resource_booking.model_resource_booking_type,hr_recruitment.group_hr_recruitment_user,1,0,0,0
+access_resource_booking_combination_hr_officer,resource.booking.combination.hr.officer,resource_booking.model_resource_booking_combination,hr_recruitment.group_hr_recruitment_user,1,0,0,0
+access_wa_chatbot_start_wizard,wa.chatbot.start.wizard,model_wa_chatbot_start_wizard,hr_recruitment.group_hr_recruitment_user,1,1,1,1
