@@ -69,14 +69,30 @@ class HrApplicantChatbot(models.Model):
         self.wa_chat_data = json.dumps(data, ensure_ascii=False)
 
     def _get_wasender_config(self):
-        """Get WASender config - prefer San Luis, then Queretaro, skip Leon (logged out)."""
-        # Try San Luis first (id=4), then Queretaro (id=3), then Leon (id=2)
-        for config_name in ["San Luis", "Queretaro", "Leon"]:
-            config = self.env["onrentx.wasender.config"].search([
-                ("name", "ilike", config_name),
-            ], limit=1)
-            if config and config.api_key:
-                return config
+        """Get WASender config - prefer San Luis, then Queretaro, skip Leon (logged out).
+        
+        ISSUE #7 FIX: Single search with domain, sort in Python (not 3 separate searches).
+        """
+        # ISSUE #7 FIX: Single query instead of 3 separate searches
+        configs = self.env["onrentx.wasender.config"].search([
+            ("name", "ilike", "San Luis"),
+            "|",
+            ("name", "ilike", "Queretaro"),
+            "|",
+            ("name", "ilike", "Leon"),
+        ], order="id")  # Ensure consistent ordering
+        
+        # Priority order: San Luis (id=4) > Queretaro (id=3) > Leon (id=2)
+        # Sort in Python by priority
+        priority = {"San Luis": 0, "Queretaro": 1, "Leon": 2}
+        sorted_configs = sorted(
+            [c for c in configs if c.api_key],
+            key=lambda c: priority.get(c.name, 99)
+        )
+        
+        if sorted_configs:
+            return sorted_configs[0]
+        
         # Fallback: any config with api_key
         return self.env["onrentx.wasender.config"].search([
             ("api_key", "!=", False),
@@ -361,25 +377,29 @@ class HrApplicantChatbot(models.Model):
     # ─── Incoming message handler (called from webhook) ───
 
     def handle_wa_incoming(self, text, message_id=None):
-        """Process incoming WA message based on current chat state."""
+        """Process incoming WA message based on current chat state.
+        
+        ISSUE #6 FIX: Parse JSON once at start, save once at end.
+        All state changes are batched in local `data` dict, single _set_wa_data() call.
+        """
         self.ensure_one()
 
         # Skip if human-attended mode\n        if self.wa_chat_state == "atendido_humano":\n            _logger.info("Chatbot skip: applicant %d in human-attended mode", self.id)\n            return
 
+        # ── ISSUE #6 FIX: Parse JSON ONCE at start ──
+        data = self._get_wa_data()
+        state_changed = False  # Track if state changes for single commit at end
+
         # ── Dedup layer 1: skip if message_id already processed ──
         if message_id:
-            data = self._get_wa_data()
             processed = data.get("processed_msg_ids", [])
             if message_id in processed:
                 _logger.info("Chatbot dedup: msg %s already processed for applicant %d", message_id, self.id)
                 return
-            # Save message_id immediately and commit to block other threads
+            # Add to processed list (will save at end)
             processed.append(message_id)
             # Keep only last 20 to avoid unbounded growth
             data["processed_msg_ids"] = processed[-20:]
-            self._set_wa_data(data)
-            self.env.cr.commit()
-            self.invalidate_recordset()
 
         # ── Loop detection ──
         if self._check_stuck_loop():
@@ -390,8 +410,6 @@ class HrApplicantChatbot(models.Model):
         if state in ("rechazado", "prescreening_eval"):
             _logger.info("Chatbot skip: applicant %d already in state %s", self.id, state)
             return
-
-        data = self._get_wa_data()
 
         if state == "idle":
             # Candidate in idle responding (e.g. to reminder or welcome WA)
@@ -411,7 +429,7 @@ class HrApplicantChatbot(models.Model):
             if is_image:
                 # Photo received — ask for confirmation before accepting
                 data["jcf_waiting_confirm"] = True
-                self._set_wa_data(data)
+                state_changed = True
                 self._send_wa(
                     self.partner_phone,
                     "📸 Recibimos tu foto.\n\n"
@@ -424,7 +442,7 @@ class HrApplicantChatbot(models.Model):
                 # Waiting for yes/no confirmation on JCF photo
                 if any(w in text_lower for w in ["sí", "si", "yes", "correcto", "confirmo", "esa es"]):
                     data["jcf_waiting_confirm"] = False
-                    self._set_wa_data(data)
+                    state_changed = True
                     self._send_wa(
                         self.partner_phone,
                         "¡Gracias %s! ✅ Tu comprobante será revisado.\n\n"
@@ -434,7 +452,7 @@ class HrApplicantChatbot(models.Model):
                     )
                 elif any(w in text_lower for w in ["no", "aún no", "todavía", "es otra", "fase"]):
                     data["jcf_waiting_confirm"] = False
-                    self._set_wa_data(data)
+                    state_changed = True
                     self._send_wa(
                         self.partner_phone,
                         "Entendido. Necesitamos el comprobante de la *fase final* "
@@ -468,6 +486,12 @@ class HrApplicantChatbot(models.Model):
                 self._handle_faq_response(text, data)
         elif state in ("listo_entrevista",):
             self._handle_faq_response(text, data)
+
+        # ── ISSUE #6 FIX: Save state ONCE at end ──
+        if state_changed or message_id:
+            self._set_wa_data(data)
+            self.env.cr.commit()
+            self.invalidate_recordset()
 
     def _handle_idle_response(self, text, data):
         """Handle response from candidate in idle state (pre-survey, responding to welcome/reminder)."""
@@ -818,7 +842,12 @@ INSTRUCCIONES:
             )
 
     def _handle_conversational_turn(self, text, data):
-        """Handle a conversational turn during pre-screening."""
+        """Handle a conversational turn during pre-screening.
+        
+        ISSUE #6 FIX: Does NOT call _set_wa_data() for normal flow.
+        Parent (handle_wa_incoming) saves once at end.
+        Only saves immediately when transitioning to prescreening_eval.
+        """
         # Prevent duplicate webhook processing
         if self.wa_chat_state in ('prescreening_eval', 'pasa_pendiente_jcf', 'rechazado', 'listo_entrevista'):
             _logger.info("WA chatbot: Ignorando mensaje duplicado, estado=%s", self.wa_chat_state)
@@ -827,18 +856,20 @@ INSTRUCCIONES:
         conversation = data.get("conversation", [])
         turn_count = data.get("turn_count", 0)
 
-        # Save candidate's response
+        # Save candidate's response (in-memory, parent will persist)
         conversation.append({"role": "candidate", "text": text})
         turn_count += 1
         data["conversation"] = conversation
         data["turn_count"] = turn_count
-        self._set_wa_data(data)
+        # ISSUE #6 FIX: Removed _set_wa_data() here - parent saves at end
 
         # After 5-7 turns, consider evaluating
         if turn_count >= 5:
             # Hard stop at 7 turns
             if turn_count >= 7:
                 self.wa_chat_state = "prescreening_eval"
+                # Must save immediately before evaluation
+                self._set_wa_data(data)
                 self.env.cr.commit()
                 self.invalidate_recordset()
                 self._evaluate_conversational_screening(data)
@@ -849,12 +880,15 @@ INSTRUCCIONES:
             if not should_continue:
                 # Lock state THEN evaluate
                 self.wa_chat_state = "prescreening_eval"
+                # Must save immediately before evaluation
+                self._set_wa_data(data)
                 self.env.cr.commit()
                 self.invalidate_recordset()
                 self._evaluate_conversational_screening(data)
                 return
 
         # Generate next question based on conversation so far
+        # Parent will save after this returns
         self._send_next_conversational_turn(data)
 
     def _send_next_conversational_turn(self, data):
