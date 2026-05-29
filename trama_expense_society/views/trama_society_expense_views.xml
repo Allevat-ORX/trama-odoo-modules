@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== GASTOS ==================== -->
+
+    <!-- Tree/List view -->
+    <record id="view_trama_society_expense_tree" model="ir.ui.view">
+        <field name="name">trama.society.expense.tree</field>
+        <field name="model">trama.society.expense</field>
+        <field name="arch" type="xml">
+            <list string="Gastos de Sociedad"
+                  decoration-muted="state == 'cancelled'"
+                  decoration-success="state == 'paid'"
+                  decoration-warning="state == 'pending'"
+                  decoration-info="state == 'justified'"
+                  default_order="date desc">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="society_type_id"/>
+                <field name="category_id"/>
+                <field name="paid_by"/>
+                <field name="amount_total" sum="Total Gastos" widget="monetary" options="{'currency_id': False}"/>
+                <field name="amount_paid" sum="Total Pagado" widget="monetary" options="{'currency_id': False}" optional="hide"/>
+                <field name="amount_pending" sum="Total Pendiente" widget="monetary" options="{'currency_id': False}" optional="hide"/>
+                <field name="partner_1_name" optional="hide"/>
+                <field name="partner_1_amount" sum="Socio 1" widget="monetary" options="{'currency_id': False}" optional="hide"/>
+                <field name="partner_2_name" optional="hide"/>
+                <field name="partner_2_amount" sum="Socio 2" widget="monetary" options="{'currency_id': False}" optional="hide"/>
+                <field name="partner_3_name" optional="hide"/>
+                <field name="partner_3_amount" sum="Socio 3" widget="monetary" options="{'currency_id': False}" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'pending'"
+                       decoration-primary="state == 'justified'"
+                       decoration-success="state == 'paid'"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view - MEJORADA -->
+    <record id="view_trama_society_expense_form" model="ir.ui.view">
+        <field name="name">trama.society.expense.form</field>
+        <field name="model">trama.society.expense</field>
+        <field name="arch" type="xml">
+            <form string="Gasto de Sociedad">
+                <header>
+                    <button name="action_pending" string="Enviar" type="object"
+                            invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_justified" string="Justificar" type="object"
+                            invisible="state != 'pending'"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="oe_highlight"/>
+                    <button name="action_paid" string="Marcar Pagado" type="object"
+                            invisible="state not in ('justified', 'pending')"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="oe_highlight"/>
+                    <button name="action_cancelled" string="Cancelar" type="object"
+                            invisible="state not in ('draft', 'pending')" class="btn-secondary"/>
+                    <button name="action_draft" string="Volver a Borrador" type="object"
+                            invisible="state != 'cancelled'" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,justified,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Concepto del Gasto"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Hosting AWS Mayo 2026"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Datos del Gasto">
+                            <field name="date"/>
+                            <field name="society_type_id" options="{'no_create': True}"/>
+                            <field name="category_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="paid_by"/>
+                            <field name="reference" placeholder="Factura, ticket, referencia..."/>
+                        </group>
+                        <group string="Importes">
+                            <field name="amount_total" widget="monetary" options="{'currency_id': False}"/>
+                            <field name="amount_paid" widget="monetary" options="{'currency_id': False}"/>
+                            <field name="amount_pending" widget="monetary" options="{'currency_id': False}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Distribucion por Socio" name="distribution">
+                            <group>
+                                <group string="Socio 1" invisible="not partner_1_name">
+                                    <field name="partner_1_name" string="Nombre"/>
+                                    <field name="partner_1_percent" string="Porcentaje" widget="percentage"/>
+                                    <field name="partner_1_amount" string="Le corresponde" widget="monetary" options="{'currency_id': False}"/>
+                                </group>
+                                <group string="Socio 2" invisible="not partner_2_name">
+                                    <field name="partner_2_name" string="Nombre"/>
+                                    <field name="partner_2_percent" string="Porcentaje" widget="percentage"/>
+                                    <field name="partner_2_amount" string="Le corresponde" widget="monetary" options="{'currency_id': False}"/>
+                                </group>
+                                <group string="Socio 3" invisible="not partner_3_name">
+                                    <field name="partner_3_name" string="Nombre"/>
+                                    <field name="partner_3_percent" string="Porcentaje" widget="percentage"/>
+                                    <field name="partner_3_amount" string="Le corresponde" widget="monetary" options="{'currency_id': False}"/>
+                                </group>
+                                <group string="Socio 4" invisible="not partner_4_name">
+                                    <field name="partner_4_name" string="Nombre"/>
+                                    <field name="partner_4_percent" string="Porcentaje" widget="percentage"/>
+                                    <field name="partner_4_amount" string="Le corresponde" widget="monetary" options="{'currency_id': False}"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Comprobantes" name="attachments">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="note" placeholder="Notas adicionales, justificacion del gasto..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Kanban view - Odoo 18 card template -->
+    <record id="view_trama_society_expense_kanban" model="ir.ui.view">
+        <field name="name">trama.society.expense.kanban</field>
+        <field name="model">trama.society.expense</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="amount_total"/>
+                <field name="state"/>
+                <field name="category_id"/>
+                <field name="society_type_id"/>
+                <progressbar field="state"
+                    colors='{"draft": "secondary", "pending": "warning", "justified": "info", "paid": "success", "cancelled": "danger"}'/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold fs-5"/>
+                        <field name="society_type_id" class="text-muted"/>
+                        <div class="d-flex justify-content-between mt-1">
+                            <field name="date"/>
+                            <strong class="text-primary">
+                                $<field name="amount_total"/>
+                            </strong>
+                        </div>
+                        <field name="category_id" class="mt-1 text-muted"/>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_society_expense_search" model="ir.ui.view">
+        <field name="name">trama.society.expense.search</field>
+        <field name="model">trama.society.expense</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Gastos">
+                <field name="name" string="Concepto"/>
+                <field name="society_type_id"/>
+                <field name="reference"/>
+                <field name="category_id"/>
+                <separator/>
+                <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Justificados" name="justified" domain="[('state', '=', 'justified')]"/>
+                <filter string="Pagados" name="paid" domain="[('state', '=', 'paid')]"/>
+                <filter string="Cancelados" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%Y-%m-%d')), ('date', '&lt;', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Este Ano" name="this_year" domain="[('date', '&gt;=', (context_today() - relativedelta(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Agrupar por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Sociedad" name="group_society" context="{'group_by': 'society_type_id'}"/>
+                    <filter string="Categoria" name="group_category" context="{'group_by': 'category_id'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'date:month'}"/>
+                    <filter string="Pagado por" name="group_paid_by" context="{'group_by': 'paid_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Graph view -->
+    <record id="view_trama_society_expense_graph" model="ir.ui.view">
+        <field name="name">trama.society.expense.graph</field>
+        <field name="model">trama.society.expense</field>
+        <field name="arch" type="xml">
+            <graph string="Analisis de Gastos" type="bar">
+                <field name="category_id" type="row"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot view -->
+    <record id="view_trama_society_expense_pivot" model="ir.ui.view">
+        <field name="name">trama.society.expense.pivot</field>
+        <field name="model">trama.society.expense</field>
+        <field name="arch" type="xml">
+            <pivot string="Tabla de Gastos" sample="1">
+                <field name="category_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Action - list first, then form -->
+    <record id="action_trama_society_expense" model="ir.actions.act_window">
+        <field name="name">Gastos</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.expense</field>
+        <field name="view_mode">list,kanban,graph,pivot,form</field>
+        <field name="search_view_id" ref="view_trama_society_expense_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Registra el primer gasto de la sociedad
+            </p>
+            <p>Registra gastos compartidos y se distribuiran automaticamente segun los porcentajes de cada socio.</p>
+        </field>
+    </record>
+
+    <!-- Dashboard action (graph+pivot first) -->
+    <record id="action_trama_society_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard Gastos</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.expense</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="search_view_id" ref="view_trama_society_expense_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay gastos registrados este ano
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== SWEAT EQUITY ==================== -->
+
+    <!-- Tree/List view -->
+    <record id="view_trama_society_sweat_equity_tree" model="ir.ui.view">
+        <field name="name">trama.society.sweat.equity.tree</field>
+        <field name="model">trama.society.sweat.equity</field>
+        <field name="arch" type="xml">
+            <list string="Sweat Equity"
+                  decoration-muted="state == 'rechazado'"
+                  decoration-success="state == 'reconocido'"
+                  decoration-warning="state == 'pendiente'"
+                  default_order="date desc">
+                <field name="society_type_id"/>
+                <field name="partner_name"/>
+                <field name="date"/>
+                <field name="date_end" optional="show"/>
+                <field name="period"/>
+                <field name="concepto_type"/>
+                <field name="name"/>
+                <field name="amount" sum="Total Sweat Equity" widget="monetary" options="{'currency_id': False}"/>
+                <field name="amount_per_month" widget="monetary" options="{'currency_id': False}" optional="show"/>
+                <field name="reference" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-success="state == 'reconocido'"
+                       decoration-danger="state == 'rechazado'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_society_sweat_equity_form" model="ir.ui.view">
+        <field name="name">trama.society.sweat.equity.form</field>
+        <field name="model">trama.society.sweat.equity</field>
+        <field name="arch" type="xml">
+            <form string="Sweat Equity">
+                <header>
+                    <button name="action_reconocer" string="Reconocer" type="object"
+                            invisible="state != 'pendiente'"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="oe_highlight"/>
+                    <button name="action_rechazar" string="Rechazar" type="object"
+                            invisible="state != 'pendiente'"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pendiente,reconocido"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Concepto"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Renta oficina Enero-Marzo 2026"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Datos de la Aportacion">
+                            <field name="society_type_id" options="{'no_create': True}"/>
+                            <field name="partner_number"/>
+                            <field name="partner_name" readonly="1"/>
+                            <field name="concepto_type"/>
+                        </group>
+                        <group string="Periodo y Valor">
+                            <field name="date"/>
+                            <field name="date_end"/>
+                            <field name="period" readonly="1"/>
+                            <field name="amount" widget="monetary" options="{'currency_id': False}" string="Valor Total"/>
+                            <field name="amount_per_month" readonly="1" widget="monetary" options="{'currency_id': False}"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reference" placeholder="Contrato, inventario, referencia..."/>
+                        <field name="note" placeholder="Descripcion detallada de la aportacion..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_society_sweat_equity_search" model="ir.ui.view">
+        <field name="name">trama.society.sweat.equity.search</field>
+        <field name="model">trama.society.sweat.equity</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Sweat Equity">
+                <field name="name"/>
+                <field name="partner_name"/>
+                <field name="society_type_id"/>
+                <field name="concepto_type"/>
+                <separator/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pendiente')]"/>
+                <filter string="Reconocidos" name="reconocido" domain="[('state', '=', 'reconocido')]"/>
+                <filter string="Rechazados" name="rechazado" domain="[('state', '=', 'rechazado')]"/>
+                <separator/>
+                <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%Y-%m-%d')), ('date', '&lt;', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Este Ano" name="this_year" domain="[('date', '&gt;=', (context_today() - relativedelta(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Agrupar por">
+                    <filter string="Socio" name="group_partner" context="{'group_by': 'partner_name'}"/>
+                    <filter string="Sociedad" name="group_society" context="{'group_by': 'society_type_id'}"/>
+                    <filter string="Tipo" name="group_concepto" context="{'group_by': 'concepto_type'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Kanban view -->
+    <record id="view_trama_society_sweat_equity_kanban" model="ir.ui.view">
+        <field name="name">trama.society.sweat.equity.kanban</field>
+        <field name="model">trama.society.sweat.equity</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="amount"/>
+                <field name="state"/>
+                <field name="partner_name"/>
+                <field name="concepto_type"/>
+                <progressbar field="state"
+                    colors='{"pendiente": "warning", "reconocido": "success", "rechazado": "danger"}'/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold fs-5"/>
+                        <field name="partner_name" class="text-muted"/>
+                        <div class="d-flex justify-content-between mt-1">
+                            <field name="date"/>
+                            <strong class="text-info">
+                                $<field name="amount"/>
+                            </strong>
+                        </div>
+                        <field name="concepto_type" widget="badge" class="mt-1"/>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_society_sweat_equity" model="ir.actions.act_window">
+        <field name="name">Sweat Equity</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.sweat.equity</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_trama_society_sweat_equity_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Registra la primera aportacion en especie
+            </p>
+            <p>Sweat Equity representa aportaciones no monetarias: renta de oficina, comodato de equipos, trabajo no remunerado, etc.</p>
+        </field>
+    </record>
+</odoo>

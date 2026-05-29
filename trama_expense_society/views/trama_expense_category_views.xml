@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== CATEGORIAS DE GASTO ==================== -->
+
+    <!-- Tree/List view -->
+    <record id="view_trama_expense_category_tree" model="ir.ui.view">
+        <field name="name">trama.expense.category.tree</field>
+        <field name="model">trama.expense.category</field>
+        <field name="arch" type="xml">
+            <list string="Categorias de Gasto" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="budget_monthly" widget="monetary" options="{'currency_id': False}"/>
+                <field name="expense_count" string="Gastos"/>
+                <field name="color" widget="color_picker" optional="hide"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_expense_category_form" model="ir.ui.view">
+        <field name="name">trama.expense.category.form</field>
+        <field name="model">trama.expense.category</field>
+        <field name="arch" type="xml">
+            <form string="Categoria de Gasto">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                    </div>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Nombre de la Categoria"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Tecnologia"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Configuracion">
+                            <field name="code"/>
+                            <field name="budget_monthly" widget="monetary" options="{'currency_id': False}"/>
+                            <field name="sequence"/>
+                            <field name="color" widget="color_picker"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Descripcion de la categoria, que gastos incluye..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_expense_category_search" model="ir.ui.view">
+        <field name="name">trama.expense.category.search</field>
+        <field name="model">trama.expense.category</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Categorias">
+                <field name="name"/>
+                <field name="code"/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archivadas" name="archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_expense_category" model="ir.actions.act_window">
+        <field name="name">Categorias de Gasto</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.expense.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear la primera categoria de gasto
+            </p>
+            <p>Las categorias organizan los gastos segun el Plan Financiero y permiten controlar presupuestos mensuales.</p>
+        </field>
+    </record>
+</odoo>

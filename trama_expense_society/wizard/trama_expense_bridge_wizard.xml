@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_trama_expense_bridge_wizard_form" model="ir.ui.view">
+        <field name="name">trama.expense.bridge.wizard.form</field>
+        <field name="model">trama.expense.bridge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Enviar Gastos a Society">
+                <div class="alert alert-info" role="alert">
+                    <p>
+                        <strong><field name="expense_count" readonly="1"/> gasto(s) seleccionado(s)</strong>
+                    </p>
+                    <p>Los gastos seleccionados serán enviados al módulo de Gastos de Sociedad
+                       con distribución automática según los porcentajes configurados.</p>
+                </div>
+
+                <group string="Configuración">
+                    <field name="hr_expense_ids" invisible="1"/>
+                    <field name="expense_count" invisible="1"/>
+
+                    <field name="society_type_id" options="{'no_create': True}"
+                           required="1"
+                           help="Seleccione la sociedad a la que se asignarán estos gastos"/>
+
+                    <field name="category_id" options="{'no_create': True}"
+                           help="Categoría por defecto (si no se detecta automáticamente desde el producto)"/>
+
+                    <field name="paid_by"
+                           help="Quién pagó físicamente el gasto (se usa para el flujo de reembolso)"/>
+
+                    <field name="auto_classify"
+                           help="Intentar detectar categoría automáticamente desde la categoría del producto"/>
+                </group>
+
+                <group string="Notas">
+                    <field name="note" nolabel="1" placeholder="Notas opcionales..."/>
+                </group>
+
+                <footer>
+                    <button name="action_send_to_society"
+                            string="Enviar a Society"
+                            type="object"
+                            class="oe_highlight"
+                            confirm="¿Está seguro de enviar estos gastos al módulo Society?"/>
+
+                    <button name="action_cancel"
+                            string="Cancelar"
+                            type="object"
+                            class="oe_link"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action (server action for hr.expense) -->
+    <record id="action_hr_expense_bridge_wizard" model="ir.actions.act_window">
+        <field name="name">Enviar a Society</field>
+        <field name="res_model">trama.expense.bridge.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="binding_view_types">form,list</field>
+    </record>
+
+    <!-- Server Action to open wizard from tree view -->
+    <record id="action_hr_expense_bridge_wizard_tree" model="ir.actions.server">
+        <field name="name">Enviar a Society (selección múltiple)</field>
+        <field name="model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="binding_model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="state">code</field>
+        <field name="code">
+action = env.ref('trama_expense_society.action_hr_expense_bridge_wizard').read()[0]
+action['context'] = {'active_ids': env.context.get('active_ids', [])}
+        </field>
+    </record>
+
+</odoo>

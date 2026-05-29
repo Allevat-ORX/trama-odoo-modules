@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_trama_society_balance_wizard_form" model="ir.ui.view">
+        <field name="name">trama.society.balance.wizard.form</field>
+        <field name="model">trama.society.balance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Saldo per Socio">
+                <group>
+                    <group>
+                        <field name="society_type_id" options="{'no_create': True}"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <field name="line_ids" nolabel="1">
+                    <list string="Saldo per Socio" create="false" delete="false">
+                        <field name="partner_name" string="Socio"/>
+                        <field name="partner_percent" string="%"/>
+                        <field name="total_gastos" string="Gastos Corresponents" sum="Total"/>
+                        <field name="total_depositado" string="Depositat" sum="Total"/>
+                        <field name="saldo_operativo" string="Saldo Operatiu" sum="Total"
+                               decoration-danger="saldo_operativo &lt; 0"
+                               decoration-success="saldo_operativo &gt;= 0"/>
+                        <field name="total_sweat_equity" string="Sweat Equity" sum="Total"/>
+                        <field name="saldo_total" string="Saldo Total" sum="Total"
+                               decoration-danger="saldo_total &lt; 0"
+                               decoration-success="saldo_total &gt;= 0"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_calculate" string="Calcular Saldos" type="object" class="btn-primary"/>
+                    <button string="Tancar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_trama_society_balance_wizard" model="ir.actions.act_window">
+        <field name="name">Saldo per Socio</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.balance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

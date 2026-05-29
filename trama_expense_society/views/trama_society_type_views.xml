@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== TIPOS DE SOCIEDAD ==================== -->
+
+    <!-- Tree/List view -->
+    <record id="view_trama_society_type_tree" model="ir.ui.view">
+        <field name="name">trama.society.type.tree</field>
+        <field name="model">trama.society.type</field>
+        <field name="arch" type="xml">
+            <list string="Tipos de Sociedad">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="partner_1_name" string="Socio 1"/>
+                <field name="partner_1_percent" string="%" widget="percentage"/>
+                <field name="partner_2_name" string="Socio 2"/>
+                <field name="partner_2_percent" string="%" widget="percentage"/>
+                <field name="partner_3_name" string="Socio 3" optional="show"/>
+                <field name="partner_3_percent" string="%" widget="percentage" optional="show"/>
+                <field name="partner_count"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_society_type_form" model="ir.ui.view">
+        <field name="name">trama.society.type.form</field>
+        <field name="model">trama.society.type</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Sociedad">
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Nombre de la Sociedad"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Global Rent X"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="partner_count" readonly="1"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Distribucion de Socios">
+                        <group string="Socio 1">
+                            <field name="partner_1_name" placeholder="Nombre del socio"/>
+                            <field name="partner_1_percent" widget="percentage"/>
+                        </group>
+                        <group string="Socio 2">
+                            <field name="partner_2_name" placeholder="Nombre del socio"/>
+                            <field name="partner_2_percent" widget="percentage"/>
+                        </group>
+                        <group string="Socio 3">
+                            <field name="partner_3_name" placeholder="Dejar vacio si no aplica"/>
+                            <field name="partner_3_percent" widget="percentage"/>
+                        </group>
+                        <group string="Socio 4">
+                            <field name="partner_4_name" placeholder="Dejar vacio si no aplica"/>
+                            <field name="partner_4_percent" widget="percentage"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Notas sobre esta sociedad..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_society_type_search" model="ir.ui.view">
+        <field name="name">trama.society.type.search</field>
+        <field name="model">trama.society.type</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Tipos de Sociedad">
+                <field name="name"/>
+                <field name="code"/>
+                <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_society_type" model="ir.actions.act_window">
+        <field name="name">Tipos de Sociedad</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

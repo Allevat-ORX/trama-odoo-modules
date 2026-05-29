@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú principal -->
+    <menuitem id="menu_trama_society_root"
+              name="Gastos Sociedad"
+              sequence="40"
+              web_icon="trama_expense_society,static/description/icon.png"/>
+
+    <!-- Dashboard -->
+    <menuitem id="menu_trama_society_dashboard"
+              name="Dashboard"
+              parent="menu_trama_society_root"
+              action="action_trama_society_dashboard"
+              sequence="5"/>
+
+    <!-- Submenu Transaccions Personals -->
+    <menuitem id="menu_trama_personal_transaction"
+              name="Transaccions"
+              parent="menu_trama_society_root"
+              action="action_trama_personal_transaction"
+              sequence="8"/>
+
+    <!-- Submenú Gastos -->
+    <menuitem id="menu_trama_society_expense"
+              name="Gastos"
+              parent="menu_trama_society_root"
+              action="action_trama_society_expense"
+              sequence="10"/>
+
+    <!-- Submenú Depósitos -->
+    <menuitem id="menu_trama_society_deposit"
+              name="Depósitos"
+              parent="menu_trama_society_root"
+              action="action_trama_society_deposit"
+              sequence="20"/>
+
+    <!-- Submenú Sweat Equity -->
+    <menuitem id="menu_trama_society_sweat_equity"
+              name="Sweat Equity"
+              parent="menu_trama_society_root"
+              action="action_trama_society_sweat_equity"
+              sequence="30"/>
+
+    <!-- Submenú Configuración -->
+    <menuitem id="menu_trama_society_config"
+              name="Configuracion"
+              parent="menu_trama_society_root"
+              groups="trama_expense_society.group_trama_society_manager"
+              sequence="100"/>
+
+    <menuitem id="menu_trama_society_type"
+              name="Tipos de Sociedad"
+              parent="menu_trama_society_config"
+              action="action_trama_society_type"
+              sequence="10"/>
+
+    <!-- Reportes -->
+    <menuitem id="menu_trama_society_reports"
+              name="Reportes"
+              parent="menu_trama_society_root"
+              sequence="50"/>
+
+    <menuitem id="menu_trama_society_report_estado"
+              name="Estado de Cuenta"
+              parent="menu_trama_society_reports"
+              action="action_trama_society_report_wizard"
+              sequence="10"/>
+
+    <menuitem id="menu_trama_society_report_gastos"
+              name="Reporte de Gastos"
+              parent="menu_trama_society_reports"
+              action="action_trama_society_expense_report"
+              sequence="20"/>
+
+    <!-- Presupuestos (under Reportes) -->
+    <menuitem id="menu_trama_category_budget"
+              name="Presupuestos por Categoria"
+              parent="menu_trama_society_reports"
+              action="action_trama_category_budget"
+              sequence="30"/>
+
+    <!-- Categorias de Gasto (under Configuracion) -->
+    <menuitem id="menu_trama_expense_category"
+              name="Categorias de Gasto"
+              parent="menu_trama_society_config"
+              action="action_trama_expense_category"
+              sequence="20"/>
+
+    <!-- Importar Estat de Compte (under Configuracion) -->
+    <menuitem id="menu_trama_bank_import_wizard"
+              name="Importar Estat de Compte"
+              parent="menu_trama_society_config"
+              action="action_trama_bank_import_wizard"
+              sequence="30"/>
+
+    <!-- Historial Importacions (under Configuracion) -->
+    <menuitem id="menu_trama_bank_import_batch"
+              name="Historial Importacions"
+              parent="menu_trama_society_config"
+              action="action_trama_bank_import_batch"
+              sequence="40"/>
+
+
+    <!-- Puentes hr.expense - Society (under Configuracion) -->
+    <menuitem id="menu_trama_expense_bridge"
+              name="Puentes App Movil"
+              parent="menu_trama_society_config"
+              action="action_trama_expense_bridge"
+              sequence="50"/>
+
+    <!-- Balances (under Configuracion) -->
+    <menuitem id="menu_trama_society_balance"
+              name="Balanc per Soci"
+              parent="menu_trama_society_config"
+              action="action_trama_society_balance"
+              sequence="60"/>
+
+    <!-- Income Personal (under Reportes) -->
+    <menuitem id="menu_trama_personal_income"
+              name="Ingressos Personals"
+              parent="menu_trama_society_reports"
+              action="action_trama_personal_income"
+              sequence="40"/>
+
+    <!-- Acció per a Diana: Per Classificar (mobile-first) -->
+    <record id="action_trama_personal_transaction_diana" model="ir.actions.act_window">
+        <field name="name">⚠ Per Classificar (Diana)</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.personal.transaction</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="search_view_id" ref="view_trama_personal_transaction_search"/>
+        <field name="context">{'search_default_unclassified': 1}</field>
+        <field name="domain">[('classification', '=', 'unclassified')]</field>
+    </record>
+
+    <menuitem id="menu_trama_personal_transaction_diana"
+              name="⚠ Per Classificar"
+              parent="menu_trama_society_root"
+              action="action_trama_personal_transaction_diana"
+              sequence="7"/>
+</odoo>

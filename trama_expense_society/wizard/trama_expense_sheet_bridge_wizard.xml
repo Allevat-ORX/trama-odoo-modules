@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Wizard form view: Enviar Reporte a Society -->
+        <record id="view_trama_expense_sheet_bridge_wizard_form" model="ir.ui.view">
+            <field name="name">trama.expense.sheet.bridge.wizard.form</field>
+            <field name="model">trama.expense.sheet.bridge.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Enviar Reporte a Society">
+                    <sheet>
+                        <group>
+                            <field name="hr_expense_sheet_id"/>
+                            <field name="amount_total"/>
+                            <field name="expense_count"/>
+                        </group>
+                        <group>
+                            <field name="society_type_id" options="{'no_create': True}"/>
+                            <field name="category_id" options="{'no_create': True}"/>
+                            <field name="paid_by"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button string="Enviar a Society"
+                                name="action_send_to_society"
+                                type="object"
+                                class="btn-primary"/>
+                        <button string="Cancelar"
+                                name="action_cancel"
+                                type="object"
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action window -->
+        <record id="action_trama_expense_sheet_bridge_wizard" model="ir.actions.act_window">
+            <field name="name">Enviar Reporte a Society</field>
+            <field name="res_model">trama.expense.sheet.bridge.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="hr_expense.model_hr_expense_sheet"/>
+            <field name="binding_view_types">form,list</field>
+        </record>
+    </data>
+</odoo>

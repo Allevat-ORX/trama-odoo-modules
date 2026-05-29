@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== PRESUPUESTOS POR CATEGORIA ==================== -->
+
+    <!-- Tree/List view (dashboard-style with progress) -->
+    <record id="view_trama_category_budget_tree" model="ir.ui.view">
+        <field name="name">trama.category.budget.tree</field>
+        <field name="model">trama.category.budget</field>
+        <field name="arch" type="xml">
+            <list string="Presupuestos Mensuales"
+                  decoration-danger="is_over_budget == True"
+                  decoration-warning="is_near_budget == True"
+                  decoration-success="percent_used &lt; 80"
+                  default_order="month desc, category_id">
+                <field name="category_id"/>
+                <field name="society_type_id" optional="hide"/>
+                <field name="month" widget="date"/>
+                <field name="amount_budgeted" widget="monetary" options="{'currency_id': False}" sum="Total Presupuestado"/>
+                <field name="amount_spent" widget="monetary" options="{'currency_id': False}" sum="Total Gastado"/>
+                <field name="amount_remaining" widget="monetary" options="{'currency_id': False}" sum="Total Restante"/>
+                <field name="percent_used" widget="progressbar" options="{'max_value': 100}"/>
+                <field name="is_over_budget" column_invisible="1"/>
+                <field name="is_near_budget" column_invisible="1"/>
+                <field name="alert_80_sent" optional="hide"/>
+                <field name="alert_100_sent" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_category_budget_form" model="ir.ui.view">
+        <field name="name">trama.category.budget.form</field>
+        <field name="model">trama.category.budget</field>
+        <field name="arch" type="xml">
+            <form string="Presupuesto Mensual">
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not is_over_budget">
+                        <strong>PRESUPUESTO EXCEDIDO</strong> - Se ha superado el 100% del presupuesto asignado.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not is_near_budget">
+                        <strong>ATENCION</strong> - Se ha alcanzado el 80% del presupuesto asignado.
+                    </div>
+
+                    <group>
+                        <group string="Configuracion">
+                            <field name="category_id" options="{'no_create': True}"/>
+                            <field name="society_type_id" options="{'no_create': True}"/>
+                            <field name="month"/>
+                            <field name="amount_budgeted" widget="monetary" options="{'currency_id': False}"/>
+                        </group>
+                        <group string="Estado">
+                            <field name="amount_spent" widget="monetary" options="{'currency_id': False}" readonly="1"/>
+                            <field name="amount_remaining" widget="monetary" options="{'currency_id': False}" readonly="1"/>
+                            <field name="percent_used" widget="progressbar" options="{'max_value': 100}" readonly="1"/>
+                            <field name="is_over_budget" readonly="1"/>
+                            <field name="is_near_budget" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Alertas">
+                        <group>
+                            <field name="alert_80_sent" readonly="1"/>
+                            <field name="alert_100_sent" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_category_budget_search" model="ir.ui.view">
+        <field name="name">trama.category.budget.search</field>
+        <field name="model">trama.category.budget</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Presupuestos">
+                <field name="category_id"/>
+                <field name="society_type_id"/>
+                <separator/>
+                <filter string="Sobre Presupuesto" name="over" domain="[('is_over_budget', '=', True)]"/>
+                <filter string="Cerca del Limite" name="near" domain="[('is_near_budget', '=', True)]"/>
+                <filter string="Dentro de Presupuesto" name="ok" domain="[('percent_used', '&lt;', 80)]"/>
+                <separator/>
+                <filter string="Este Mes" name="this_month"
+                        domain="[('month', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d')),
+                                 ('month', '&lt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Mes Pasado" name="last_month"
+                        domain="[('month', '&gt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%Y-%m-%d')),
+                                 ('month', '&lt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Agrupar por">
+                    <filter string="Categoria" name="group_category" context="{'group_by': 'category_id'}"/>
+                    <filter string="Sociedad" name="group_society" context="{'group_by': 'society_type_id'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'month:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Graph view -->
+    <record id="view_trama_category_budget_graph" model="ir.ui.view">
+        <field name="name">trama.category.budget.graph</field>
+        <field name="model">trama.category.budget</field>
+        <field name="arch" type="xml">
+            <graph string="Presupuestos vs Gastos" type="bar">
+                <field name="category_id" type="row"/>
+                <field name="amount_budgeted" type="measure"/>
+                <field name="amount_spent" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot view -->
+    <record id="view_trama_category_budget_pivot" model="ir.ui.view">
+        <field name="name">trama.category.budget.pivot</field>
+        <field name="model">trama.category.budget</field>
+        <field name="arch" type="xml">
+            <pivot string="Analisis Presupuestos" sample="1">
+                <field name="category_id" type="row"/>
+                <field name="month" interval="month" type="col"/>
+                <field name="amount_budgeted" type="measure"/>
+                <field name="amount_spent" type="measure"/>
+                <field name="amount_remaining" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_category_budget" model="ir.actions.act_window">
+        <field name="name">Presupuestos</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.category.budget</field>
+        <field name="view_mode">list,graph,pivot,form</field>
+        <field name="search_view_id" ref="view_trama_category_budget_search"/>
+        <field name="context">{'search_default_this_month': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay presupuestos para este mes
+            </p>
+            <p>Los presupuestos se crean automaticamente cuando se registra un gasto en una categoria. Tambien puedes crearlos manualmente para definir limites especificos.</p>
+        </field>
+    </record>
+</odoo>

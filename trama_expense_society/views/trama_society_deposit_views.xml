@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== DEPOSITOS ==================== -->
+
+    <!-- Tree/List view -->
+    <record id="view_trama_society_deposit_tree" model="ir.ui.view">
+        <field name="name">trama.society.deposit.tree</field>
+        <field name="model">trama.society.deposit</field>
+        <field name="arch" type="xml">
+            <list string="Depositos"
+                  decoration-muted="state == 'cancelled'"
+                  decoration-success="state == 'confirmed'"
+                  decoration-warning="state == 'pending'"
+                  default_order="date desc">
+                <field name="date"/>
+                <field name="society_type_id"/>
+                <field name="partner_name"/>
+                <field name="name"/>
+                <field name="amount" sum="Total Depositado" widget="monetary" options="{'currency_id': False}"/>
+                <field name="medio"/>
+                <field name="reference" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pending'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_society_deposit_form" model="ir.ui.view">
+        <field name="name">trama.society.deposit.form</field>
+        <field name="model">trama.society.deposit</field>
+        <field name="arch" type="xml">
+            <form string="Deposito de Socio">
+                <header>
+                    <button name="action_confirm" string="Confirmar" type="object"
+                            invisible="state != 'pending'"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="oe_highlight"/>
+                    <button name="action_cancel" string="Cancelar" type="object"
+                            invisible="state not in ('pending', 'confirmed')" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,confirmed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Concepto del Deposito"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Transferencia capital Mayo"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Datos del Deposito">
+                            <field name="date"/>
+                            <field name="society_type_id" options="{'no_create': True}"/>
+                            <field name="partner_number"/>
+                            <field name="partner_name" readonly="1"/>
+                            <field name="medio"/>
+                        </group>
+                        <group string="Importes y Referencias">
+                            <field name="amount" widget="monetary" options="{'currency_id': False}"/>
+                            <field name="reference" placeholder="Comprobante, numero de transferencia..."/>
+                            <field name="expense_id" options="{'no_create': True}" string="Gasto Relacionado"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Notas adicionales..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_society_deposit_search" model="ir.ui.view">
+        <field name="name">trama.society.deposit.search</field>
+        <field name="model">trama.society.deposit</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Depositos">
+                <field name="name"/>
+                <field name="partner_name"/>
+                <field name="society_type_id"/>
+                <field name="reference"/>
+                <separator/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Confirmados" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Cancelados" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%Y-%m-%d')), ('date', '&lt;', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Este Ano" name="this_year" domain="[('date', '&gt;=', (context_today() - relativedelta(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Agrupar por">
+                    <filter string="Socio" name="group_partner" context="{'group_by': 'partner_name'}"/>
+                    <filter string="Sociedad" name="group_society" context="{'group_by': 'society_type_id'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Medio" name="group_medio" context="{'group_by': 'medio'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Kanban view -->
+    <record id="view_trama_society_deposit_kanban" model="ir.ui.view">
+        <field name="name">trama.society.deposit.kanban</field>
+        <field name="model">trama.society.deposit</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="amount"/>
+                <field name="state"/>
+                <field name="partner_name"/>
+                <field name="medio"/>
+                <progressbar field="state"
+                    colors='{"pending": "warning", "confirmed": "success", "cancelled": "danger"}'/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold fs-5"/>
+                        <field name="partner_name" class="text-muted"/>
+                        <div class="d-flex justify-content-between mt-1">
+                            <field name="date"/>
+                            <strong class="text-success">
+                                $<field name="amount"/>
+                            </strong>
+                        </div>
+                        <field name="medio" widget="badge" class="mt-1"/>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_society_deposit" model="ir.actions.act_window">
+        <field name="name">Depositos</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.deposit</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_trama_society_deposit_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Registra el primer deposito de un socio
+            </p>
+            <p>Los depositos representan aportaciones de capital de cada socio a la sociedad.</p>
+        </field>
+    </record>
+</odoo>

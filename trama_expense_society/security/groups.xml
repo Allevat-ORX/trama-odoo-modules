@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Grupo basico: Socios (ver todo, crear gastos/depositos) -->
+    <record id="group_trama_society_partner" model="res.groups">
+        <field name="name">Socio de Sociedad</field>
+        <field name="category_id" ref="base.module_category_extra"/>
+        <field name="comment">Puede ver gastos, crear depositos y sweat equity. No puede aprobar ni configurar.</field>
+    </record>
+
+    <!-- Grupo manager: aprobar/rechazar, configurar tipos -->
+    <record id="group_trama_society_manager" model="res.groups">
+        <field name="name">Administrador de Sociedad</field>
+        <field name="category_id" ref="base.module_category_extra"/>
+        <field name="implied_ids" eval="[(4, ref('group_trama_society_partner'))]"/>
+        <field name="comment">Acceso completo: aprobar depositos, reconocer sweat equity, configurar tipos de sociedad.</field>
+        <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

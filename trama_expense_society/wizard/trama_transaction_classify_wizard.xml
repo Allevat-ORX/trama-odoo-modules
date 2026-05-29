@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard form view -->
+    <record id="view_trama_transaction_classify_wizard_form" model="ir.ui.view">
+        <field name="name">trama.transaction.classify.wizard.form</field>
+        <field name="model">trama.transaction.classify.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Classificar Transaccions en Batch">
+                <group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>
+                            <field name="transaction_count" readonly="1"/> transaccions seleccionades.
+                        </strong>
+                        Selecciona la classificacio i opcionalment la categoria i estat de factura.
+                    </div>
+                </group>
+                <group>
+                    <group>
+                        <field name="classification"/>
+                        <field name="category_id" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <group>
+                        <field name="invoice_status"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_classify" string="Aplicar Classificacio"
+                            type="object" class="oe_highlight"/>
+                    <button string="Cancel-lar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Vista -->
+    <record id="view_trama_society_report_wizard" model="ir.ui.view">
+        <field name="name">trama.society.report.wizard.form</field>
+        <field name="model">trama.society.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generar Estado de Cuenta">
+                <group>
+                    <group>
+                        <field name="society_type_id"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate_report" string="Generar Estado de Cuenta" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action Wizard -->
+    <record id="action_trama_society_report_wizard" model="ir.actions.act_window">
+        <field name="name">Estado de Cuenta</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.society.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Reporte Estado de Cuenta QWeb -->
+    <record id="action_report_estado_cuenta" model="ir.actions.report">
+        <field name="name">Estado de Cuenta</field>
+        <field name="model">trama.society.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">trama_expense_society.report_estado_cuenta</field>
+        <field name="report_file">trama_expense_society.report_estado_cuenta</field>
+        <field name="binding_model_id" ref="model_trama_society_report_wizard"/>
+    </record>
+
+    <!-- Template Estado de Cuenta (dinámico) -->
+    <template id="report_estado_cuenta">
+        <t t-call="web.html_container">
+            <t t-set="rdata" t-value="data if data else (docs[0]._prepare_report_data() if docs else {})"/>
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h1 class="text-center mb-4">
+                        Estado de Cuenta - <span t-esc="rdata.get('society', '')"/>
+                    </h1>
+                    <p class="text-center text-muted mb-4">
+                        Periodo: <span t-esc="rdata.get('date_from', '')"/> a <span t-esc="rdata.get('date_to', '')"/>
+                    </p>
+
+                    <!-- PRESUPUESTO VS GASTADO -->
+                    <h3>Presupuesto vs Gasto Real por Categoría</h3>
+                    <table class="table table-sm table-bordered mb-4">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Categoría</th>
+                                <th class="text-end">Presupuestado</th>
+                                <th class="text-end">Gastado</th>
+                                <th class="text-end">Restante</th>
+                                <th class="text-end">% Usado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="rdata.get('budget_vs_actual', [])" t-as="budget">
+                                <tr>
+                                    <td><span t-esc="budget.get('category')"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % budget.get('budgeted', 0)"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % budget.get('spent', 0)"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % budget.get('remaining', 0)"/></td>
+                                    <td class="text-end"><span t-esc="'%.1f' % budget.get('percent', 0)"/>%</td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <!-- STATUS FACTURES -->
+                    <h3>Seguimiento de Factures</h3>
+                    <div class="row mb-4">
+                        <div class="col-3">
+                            <div class="alert alert-primary text-center mb-0">
+                                <strong>Total Gastos</strong><br/>
+                                <span t-esc="rdata.get('invoice_status', {}).get('total', 0)"/>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="alert alert-success text-center mb-0">
+                                <strong>Con Factura</strong><br/>
+                                <span t-esc="rdata.get('invoice_status', {}).get('with_invoice', 0)"/>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="alert alert-warning text-center mb-0">
+                                <strong>Sin Factura</strong><br/>
+                                <span t-esc="rdata.get('invoice_status', {}).get('without_invoice', 0)"/>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="alert alert-info text-center mb-0">
+                                <strong>% Justificado</strong><br/>
+                                <span t-esc="'%.1f' % rdata.get('invoice_status', {}).get('percent_justified', 0)"/>%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RESUMEN POR SOCIO -->
+                    <h3>Resumen por Socio</h3>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Concepto</th>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <th class="text-end">
+                                        <span t-esc="p.get('name')"/> (<span t-esc="p.get('percent')"/>%)
+                                    </th>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Gastos que le corresponden</strong></td>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <td class="text-end">
+                                        $<span t-esc="'%.2f' % p.get('gastos', 0)"/>
+                                    </td>
+                                </t>
+                            </tr>
+                            <tr>
+                                <td>Total Depositado</td>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <td class="text-end">
+                                        $<span t-esc="'%.2f' % p.get('depositos', 0)"/>
+                                    </td>
+                                </t>
+                            </tr>
+                            <tr>
+                                <td>Sweat Equity Reconocido</td>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <td class="text-end">
+                                        $<span t-esc="'%.2f' % p.get('sweat_equity', 0)"/>
+                                    </td>
+                                </t>
+                            </tr>
+                            <tr class="table-info">
+                                <td><strong>SALDO (+ a favor / - debe)</strong></td>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <td class="text-end">
+                                        <strong>$<span t-esc="'%.2f' % p.get('saldo', 0)"/></strong>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- DETALLE DE GASTOS -->
+                    <h3 class="mt-4">Detalle de Gastos</h3>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Concepto</th>
+                                <th class="text-end">Total</th>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <th class="text-end"><span t-esc="p.get('name')"/></th>
+                                </t>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="rdata.get('detalle_gastos', [])" t-as="gasto">
+                                <tr>
+                                    <td><span t-esc="gasto.get('date')"/></td>
+                                    <td><span t-esc="gasto.get('name')"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % gasto.get('total', 0)"/></td>
+                                    <t t-foreach="gasto.get('partners', [])" t-as="gp">
+                                        <td class="text-end">$<span t-esc="'%.2f' % gp.get('amount', 0)"/></td>
+                                    </t>
+                                    <td><span t-esc="gasto.get('state')"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="2">TOTAL</td>
+                                <td class="text-end">$<span t-esc="'%.2f' % rdata.get('total_expenses', 0)"/></td>
+                                <t t-foreach="rdata.get('partners', [])" t-as="p">
+                                    <td class="text-end">$<span t-esc="'%.2f' % p.get('gastos', 0)"/></td>
+                                </t>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Reporte Consolidat (3 societats) -->
+    <record id="action_report_estado_cuenta_consolidat" model="ir.actions.report">
+        <field name="name">Estado de Cuenta Consolidat</field>
+        <field name="model">trama.society.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">trama_expense_society.report_estado_cuenta_consolidat</field>
+        <field name="report_file">trama_expense_society.report_estado_cuenta_consolidat</field>
+        <field name="binding_model_id" ref="model_trama_society_report_wizard"/>
+    </record>
+
+    <!-- Template Consolidat -->
+    <template id="report_estado_cuenta_consolidat">
+        <t t-call="web.html_container">
+            <t t-set="rdata" t-value="data if data else (docs[0]._prepare_consolidated_data() if docs else {})"/>
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h1 class="text-center mb-4">Estado de Cuenta Consolidat</h1>
+                    <p class="text-center text-muted mb-4">
+                        Periodo: <span t-esc="rdata.get('date_from', '')"/> a <span t-esc="rdata.get('date_to', '')"/>
+                    </p>
+
+                    <!-- RESUM PER SOCIETAT -->
+                    <h3>Resum per Societat</h3>
+                    <table class="table table-sm table-bordered mb-4">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Societat</th>
+                                <th class="text-end">Total Gastos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="rdata.get('societies', [])" t-as="soc">
+                                <tr>
+                                    <td><span t-esc="soc.get('society_name')"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % soc.get('total_expenses', 0)"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold table-info">
+                                <td>TOTAL GENERAL</td>
+                                <td class="text-end">$<span t-esc="'%.2f' % rdata.get('grand_total', 0)"/></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <!-- DETALLE PER SOCIETAT I SOCIO -->
+                    <t t-foreach="rdata.get('societies', [])" t-as="soc">
+                        <h4 class="mt-4"><span t-esc="soc.get('society_name')"/></h4>
+                        <table class="table table-sm table-bordered mb-4">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Socio</th>
+                                    <th class="text-end">% Participació</th>
+                                    <th class="text-end">Gastos</th>
+                                    <th class="text-end">Deposits</th>
+                                    <th class="text-end">Sweat Equity</th>
+                                    <th class="text-end">Saldo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="soc.get('partners', [])" t-as="p">
+                                    <tr>
+                                        <td><span t-esc="p.get('name')"/></td>
+                                        <td class="text-end"><span t-esc="p.get('percent')"/>%</td>
+                                        <td class="text-end">$<span t-esc="'%.2f' % p.get('gastos', 0)"/></td>
+                                        <td class="text-end">$<span t-esc="'%.2f' % p.get('depositos', 0)"/></td>
+                                        <td class="text-end">$<span t-esc="'%.2f' % p.get('sweat_equity', 0)"/></td>
+                                        <td class="text-end"><strong>$<span t-esc="'%.2f' % p.get('saldo', 0)"/></strong></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Update wizard form to add consolidated report button -->
+    <record id="view_trama_society_report_wizard" model="ir.ui.view">
+        <field name="name">trama.society.report.wizard.form</field>
+        <field name="model">trama.society.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generar Estado de Cuenta">
+                <group>
+                    <group>
+                        <field name="society_type_id"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate_report" string="Generar Report Individual" type="object" class="btn-primary"/>
+                    <button name="action_generate_consolidated_report" string="Generar Report Consolidat" type="object" class="btn-info"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Reporte Gastos (Listado para imprimir desde lista) -->
+    <record id="action_trama_society_expense_report" model="ir.actions.report">
+        <field name="name">Reporte de Gastos</field>
+        <field name="model">trama.society.expense</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">trama_expense_society.report_expense_list</field>
+        <field name="report_file">trama_expense_society.report_expense_list</field>
+    </record>
+
+    <template id="report_expense_list">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h1>Reporte de Gastos</h1>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Concepto</th>
+                                <th>Sociedad</th>
+                                <th>Categoria</th>
+                                <th class="text-end">Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="docs" t-as="o">
+                                <tr>
+                                    <td><span t-field="o.date"/></td>
+                                    <td><span t-field="o.name"/></td>
+                                    <td><span t-field="o.society_type_id.name"/></td>
+                                    <td><span t-field="o.category"/></td>
+                                    <td class="text-end"><span t-field="o.amount_total"/></td>
+                                    <td><span t-field="o.state"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

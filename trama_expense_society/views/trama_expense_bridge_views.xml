@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Bridge Form View -->
+    <record id="view_trama_expense_bridge_form" model="ir.ui.view">
+        <field name="name">trama.expense.bridge.form</field>
+        <field name="model">trama.expense.bridge</field>
+        <field name="arch" type="xml">
+            <form string="Puente hr.expense → Society">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sent,done,cancelled"/>
+                    <button name="action_send_to_society" string="Enviar a Society"
+                            type="object" class="oe_highlight"
+                            invisible="state not in ['draft']"/>
+                    <button name="action_cancel" string="Cancelar"
+                            type="object" invisible="state not in ['draft', 'sent']"/>
+                    <button name="action_reset_draft" string="Volver a Borrador"
+                            type="object" invisible="state not in ['cancelled']"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Gasto Origen (hr.expense)">
+                            <field name="hr_expense_id" readonly="1"/>
+                            <field name="hr_employee_id" readonly="1"/>
+                            <field name="hr_product_id" readonly="1"/>
+                            <field name="hr_date" readonly="1"/>
+                            <field name="hr_total_amount" readonly="1"/>
+                            <field name="hr_currency_id" invisible="1"/>
+                        </group>
+
+                        <group string="Configuración Society">
+                            <field name="society_type_id" options="{'no_create': True}"
+                                    readonly="state != 'draft'"/>
+                            <field name="category_id" options="{'no_create': True}"
+                                    readonly="state != 'draft'"/>
+                            <field name="paid_by" readonly="state != 'draft'"/>
+
+                            <field name="auto_classified" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Resultado">
+                        <field name="society_expense_id" readonly="1"
+                               invisible="state == 'draft'"/>
+                    </group>
+
+                    <group string="Notas">
+                        <field name="note" nolabel="1"/>
+                    </group>
+
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Bridge Tree View -->
+    <record id="view_trama_expense_bridge_tree" model="ir.ui.view">
+        <field name="name">trama.expense.bridge.tree</field>
+        <field name="model">trama.expense.bridge</field>
+        <field name="arch" type="xml">
+            <list string="Puentes hr.expense"
+                  decoration-muted="state=='cancelled'"
+                  decoration-success="state=='done'"
+                  decoration-info="state=='sent'">
+                <field name="name"/>
+                <field name="hr_expense_id"/>
+                <field name="hr_employee_id"/>
+                <field name="hr_date"/>
+                <field name="hr_total_amount"/>
+                <field name="society_type_id"/>
+                <field name="category_id"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state=='cancelled'"
+                       decoration-success="state=='done'"
+                       decoration-info="state=='sent'"
+                       decoration-warning="state=='draft'"/>
+                <field name="society_expense_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Bridge Search View -->
+    <record id="view_trama_expense_bridge_search" model="ir.ui.view">
+        <field name="name">trama.expense.bridge.search</field>
+        <field name="model">trama.expense.bridge</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Puentes">
+                <field name="name"/>
+                <field name="hr_employee_id"/>
+                <field name="society_type_id"/>
+                <field name="category_id"/>
+
+                <filter string="Pendientes" name="draft" domain="[('state', '=', 'draft')]"/>
+
+                <filter string="Enviados" name="sent" domain="[('state', '=', 'sent')]"/>
+
+                <filter string="Procesados" name="done" domain="[('state', '=', 'done')]"/>
+
+                <filter string="Cancelados" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+
+
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_by_state" context="{'group_by': 'state'}"/>
+
+                    <filter string="Sociedad" name="group_by_society" context="{'group_by': 'society_type_id'}"/>
+
+                    <filter string="Empleado" name="group_by_employee" context="{'group_by': 'hr_employee_id'}"/>
+
+                    <filter string="Categoría" name="group_by_category" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Bridge Action -->
+    <record id="action_trama_expense_bridge" model="ir.actions.act_window">
+        <field name="name">Puentes hr.expense → Society</field>
+        <field name="res_model">trama.expense.bridge</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_draft': 1}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                No hay puentes creados todavía.
+            </p>
+            <p>
+                Los puentes se crean automáticamente desde el botón "Enviar a Society"
+                en la vista de gastos de empleado (hr.expense).
+            </p>
+        </field>
+    </record>
+
+    <!-- Inherit hr.expense Form to add Send to Society button -->
+    <record id="hr_expense_form_inherit_society" model="ir.ui.view">
+        <field name="name">hr.expense.form.inherit.society</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(action_hr_expense_bridge_wizard)d"
+                        string="Enviar a Society"
+                        type="action"
+                        class="oe_highlight"
+                        invisible="state in ['refused', 'done']"
+                        groups="trama_expense_society.group_trama_society_manager"
+                        help="Enviar este gasto al módulo de Gastos de Sociedad"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit hr.expense.sheet Form to add Send to Society button (for approved reports) -->
+    <record id="hr_expense_sheet_form_inherit_society" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.inherit.society</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(action_trama_expense_sheet_bridge_wizard)d"
+                        string="Enviar a Society"
+                        type="action"
+                        class="oe_highlight"
+                        invisible="state not in ['approve', 'post', 'done']"
+                        help="Enviar este reporte aprobado al módulo de Gastos de Sociedad"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

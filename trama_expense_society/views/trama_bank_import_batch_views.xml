@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ==================== LOTS IMPORTACIO ==================== -->
+
+    <!-- List view -->
+    <record id="view_trama_bank_import_batch_tree" model="ir.ui.view">
+        <field name="name">trama.bank.import.batch.tree</field>
+        <field name="model">trama.bank.import.batch</field>
+        <field name="arch" type="xml">
+            <list string="Lots Importacio Bancaria"
+                  decoration-danger="state == 'error'"
+                  decoration-success="state == 'done'"
+                  default_order="date_import desc">
+                <field name="name"/>
+                <field name="date_import"/>
+                <field name="file_name"/>
+                <field name="lines_total" string="Total"/>
+                <field name="lines_imported" string="Importades"/>
+                <field name="lines_duplicate" string="Duplicades"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'error'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_bank_import_batch_form" model="ir.ui.view">
+        <field name="name">trama.bank.import.batch.form</field>
+        <field name="model">trama.bank.import.batch</field>
+        <field name="arch" type="xml">
+            <form string="Lot Importacio Bancaria">
+                <header>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Informacio Importacio">
+                            <field name="date_import"/>
+                            <field name="file_name"/>
+                            <field name="file_data" filename="file_name" readonly="1"/>
+                        </group>
+                        <group string="Estadistiques">
+                            <field name="lines_total"/>
+                            <field name="lines_imported"/>
+                            <field name="lines_duplicate"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Transactions tab -->
+                        <page string="Transaccions Importades" name="transactions">
+                            <field name="transaction_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="name"/>
+                                    <field name="amount" widget="monetary"
+                                           options="{'currency_id': False}"/>
+                                    <field name="classification" widget="badge"
+                                           decoration-muted="classification == 'unclassified'"
+                                           decoration-success="classification == 'onrentx'"
+                                           decoration-warning="classification == 'marcatek'"
+                                           decoration-primary="classification == 'trama'"/>
+                                    <field name="state" widget="badge"
+                                           decoration-muted="state == 'imported'"
+                                           decoration-info="state == 'classified'"
+                                           decoration-success="state == 'processed'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Error log tab -->
+                        <page string="Log Errors" name="errors"
+                              invisible="not error_log">
+                            <field name="error_log" readonly="1"/>
+                        </page>
+
+                        <!-- Notes tab -->
+                        <page string="Notes" name="notes">
+                            <field name="note"
+                                   placeholder="Notes sobre la importacio..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_bank_import_batch_search" model="ir.ui.view">
+        <field name="name">trama.bank.import.batch.search</field>
+        <field name="model">trama.bank.import.batch</field>
+        <field name="arch" type="xml">
+            <search string="Cercar Lots Importacio">
+                <field name="name"/>
+                <field name="file_name"/>
+                <separator/>
+                <filter string="Completats" name="done"
+                        domain="[('state', '=', 'done')]"/>
+                <filter string="Amb Errors" name="error"
+                        domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <group expand="0" string="Agrupar per">
+                    <filter string="Estat" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Mes Importacio" name="group_month"
+                            context="{'group_by': 'date_import:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_bank_import_batch" model="ir.actions.act_window">
+        <field name="name">Historial Importacions</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.bank.import.batch</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_trama_bank_import_batch_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hi ha importacions encara
+            </p>
+            <p>Utilitza "Importar Estat de Compte" per importar un CSV bancari.</p>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Balance Wizard Action -->
+    <record id="action_trama_society_balance" model="ir.actions.act_window">
+        <field name="name">Saldo per Soci</field>
+        <field name="res_model">trama.society.balance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -1,0 +1,26 @@
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan" style="color:#875A7B;">Gastos de Sociedad</h2>
+        <h3 class="oe_slogan">Gestión de gastos y distribución entre socios</h3>
+        <div class="oe_demo oe_picture oe_screenshot">
+            <img src="icon.png" alt="Gastos de Sociedad">
+        </div>
+    </div>
+</section>
+
+<section class="oe_container oe_dark">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan" style="color:#875A7B;">Características</h2>
+        <div class="oe_span6">
+            <p class="oe_mt32">
+                <ul>
+                    <li>Gestión de gastos por sociedad</li>
+                    <li>Distribución automática entre socios</li>
+                    <li>Registro de depósitos</li>
+                    <li>Sweat Equity (aportaciones en especie)</li>
+                    <li>Reportes de estado de cuenta</li>
+                </ul>
+            </p>
+        </div>
+    </div>
+</section>

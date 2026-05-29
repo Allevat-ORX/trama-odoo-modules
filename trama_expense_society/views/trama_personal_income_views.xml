@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==================== INGRESSOS ==================== -->
+
+    <!-- Tree/List view -->
+    <record id="view_trama_personal_income_tree" model="ir.ui.view">
+        <field name="name">trama.personal.income.tree</field>
+        <field name="model">trama.personal.income</field>
+        <field name="arch" type="xml">
+            <list string="Ingressos"
+                  decoration-muted="state == 'draft'"
+                  decoration-success="state == 'amortized'"
+                  decoration-warning="state == 'confirmed'"
+                  default_order="date desc">
+                <field name="date"/>
+                <field name="source_type"/>
+                <field name="society_type_id"/>
+                <field name="name"/>
+                <field name="amount" sum="Total Ingresat" widget="monetary" options="{'currency_id': False}"/>
+                <field name="is_amortizable" widget="boolean_toggle"/>
+                <field name="amount_amortized" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'confirmed'"
+                       decoration-success="state == 'amortized'"
+                       decoration-muted="state == 'draft'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_personal_income_form" model="ir.ui.view">
+        <field name="name">trama.personal.income.form</field>
+        <field name="model">trama.personal.income</field>
+        <field name="arch" type="xml">
+            <form string="Ingres Personal">
+                <header>
+                    <button name="action_confirm" string="Confirmar" type="object"
+                            invisible="state != 'draft'"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="oe_highlight"/>
+                    <button name="action_reset_to_draft" string="Tornar a Borrador" type="object"
+                            invisible="state not in ('confirmed', 'amortized')"
+                            groups="trama_expense_society.group_trama_society_manager"
+                            class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,amortized"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Concepte de l'ingres"/>
+                        <h1>
+                            <field name="name" placeholder="Ex: Nomina Maig 2026 - OnRentX"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Dades de l'ingres">
+                            <field name="date"/>
+                            <field name="source_type"/>
+                            <field name="society_type_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Imports">
+                            <field name="amount" widget="monetary" options="{'currency_id': False}"/>
+                            <field name="is_amortizable" widget="boolean_toggle"/>
+                            <field name="amortization_partner_number"
+                                   invisible="not is_amortizable"
+                                   required="is_amortizable"/>
+                            <field name="amortization_percent"
+                                   invisible="not is_amortizable"
+                                   required="is_amortizable"/>
+                            <field name="amount_amortized"
+                                   invisible="not is_amortizable"
+                                   readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="deposit_ids" readonly="1" invisible="deposit_ids == []">
+                            <list string="Deposits generats">
+                                <field name="date"/>
+                                <field name="society_type_id"/>
+                                <field name="partner_name"/>
+                                <field name="amount"/>
+                                <field name="state" widget="badge"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Notes adicionals..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_personal_income_search" model="ir.ui.view">
+        <field name="name">trama.personal.income.search</field>
+        <field name="model">trama.personal.income</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Ingressos">
+                <field name="name"/>
+                <field name="source_type"/>
+                <field name="society_type_id"/>
+                <separator/>
+                <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmats" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Amortitzats" name="amortized" domain="[('state', '=', 'amortized')]"/>
+                <separator/>
+                <filter string="Amortitzables" name="amortizable" domain="[('is_amortizable', '=', True)]"/>
+                <separator/>
+                <filter string="Aquest Mes" name="this_month" domain="[('date', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Mes Passat" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%Y-%m-%d')), ('date', '&lt;', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Enguany" name="this_year" domain="[('date', '&gt;=', (context_today() - relativedelta(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Agrupar per">
+                    <filter string="Tipus" name="group_type" context="{'group_by': 'source_type'}"/>
+                    <filter string="Societat" name="group_society" context="{'group_by': 'society_type_id'}"/>
+                    <filter string="Estat" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_trama_personal_income" model="ir.actions.act_window">
+        <field name="name">Ingressos</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.personal.income</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_trama_personal_income_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Registra el primer ingres personal
+            </p>
+            <p>Els ingressos representen entrades de diners: nomines, pagaments MARCATEK, freelance, etc.</p>
+            <p>Si marques "Amortitzable", es generara automaticament un diposit damortitzacio en confirmar.</p>
+        </field>
+    </record>
+</odoo>

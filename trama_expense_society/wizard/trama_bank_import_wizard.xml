@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="view_trama_bank_import_wizard_form" model="ir.ui.view">
+        <field name="name">trama.bank.import.wizard.form</field>
+        <field name="model">trama.bank.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar Estat de Compte CSV">
+                <group>
+                    <group string="Arxiu">
+                        <field name="file_data" filename="file_name"/>
+                        <field name="file_name" invisible="1"/>
+                    </group>
+                    <group string="Format">
+                        <field name="delimiter"/>
+                        <field name="date_format"/>
+                        <field name="skip_header"/>
+                    </group>
+                </group>
+
+                <group string="Mapatge de Columnes">
+                    <group>
+                        <field name="column_date"/>
+                        <field name="column_description"/>
+                        <field name="column_amount"
+                               help="Columna amb import unic. Posar -1 si uses Cargo/Abono."/>
+                    </group>
+                    <group>
+                        <field name="column_charge"
+                               help="Columna Cargo (despeses). -1 = no usar."/>
+                        <field name="column_debit"
+                               help="Columna Abono (ingressos). -1 = no usar."/>
+                    </group>
+                </group>
+
+                <group string="Formats tipics de bancs mexicans" col="1">
+                    <div class="alert alert-info" role="alert">
+                        <p><strong>Format tipic:</strong> Fecha | Descripcion | Cargo | Abono | Saldo</p>
+                        <p>Per aquest format: Data=0, Descripcio=1, Import=-1, Cargo=2, Abono=3</p>
+                        <p><strong>Format simple:</strong> Fecha | Descripcion | Monto</p>
+                        <p>Per aquest format: Data=0, Descripcio=1, Import=2, Cargo=-1, Abono=-1</p>
+                    </div>
+                </group>
+
+                <group string="Previsualitzacio" col="1">
+                    <field name="preview_text" readonly="1" nolabel="1"
+                           widget="text"/>
+                </group>
+
+                <footer>
+                    <button name="action_import"
+                            string="Importar"
+                            type="object"
+                            class="oe_highlight"/>
+                    <button string="Cancel-lar"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_trama_bank_import_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Estat de Compte</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.bank.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

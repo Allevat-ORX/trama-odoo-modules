@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ==================== TRANSACCIONS PERSONALS ==================== -->
+
+    <!-- Kanban view - grouped by classification (drag-and-drop) -->
+    <record id="view_trama_personal_transaction_kanban" model="ir.ui.view">
+        <field name="name">trama.personal.transaction.kanban</field>
+        <field name="model">trama.personal.transaction</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="classification" class="o_kanban_small_column"
+                    on_create="quick_create" quick_create_view="trama_expense_society.view_trama_personal_transaction_form_quick">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="amount"/>
+                <field name="classification"/>
+                <field name="state"/>
+                <field name="category_id"/>
+                <field name="invoice_status"/>
+                <field name="payment_method"/>
+                <field name="color"/>
+                <progressbar field="state"
+                    colors='{"imported": "secondary", "classified": "info", "processed": "success", "reconciled": "primary"}'/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold fs-5"/>
+                        <div class="d-flex justify-content-between mt-1">
+                            <field name="date"/>
+                            <strong t-attf-class="#{record.amount.raw_value &lt; 0 ? 'text-success' : 'text-danger'}">
+                                $<field name="amount"/>
+                            </strong>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <field name="category_id" class="text-muted"/>
+                            <field name="state" widget="badge"
+                                   decoration-muted="state == 'imported'"
+                                   decoration-info="state == 'classified'"
+                                   decoration-success="state == 'processed'"
+                                   decoration-primary="state == 'reconciled'"/>
+                        </div>
+                        <div t-if="record.invoice_status.raw_value == 'pending'" class="mt-1">
+                            <span class="badge text-bg-warning">Factura pendent</span>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Quick create form (minimal fields for kanban) -->
+    <record id="view_trama_personal_transaction_form_quick" model="ir.ui.view">
+        <field name="name">trama.personal.transaction.form.quick</field>
+        <field name="model">trama.personal.transaction</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="name" placeholder="Descripcio de la transaccio"/>
+                    <field name="date"/>
+                    <field name="amount"/>
+                    <field name="category_id" options="{'no_create': True}"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <!-- List view -->
+    <record id="view_trama_personal_transaction_tree" model="ir.ui.view">
+        <field name="name">trama.personal.transaction.tree</field>
+        <field name="model">trama.personal.transaction</field>
+        <field name="arch" type="xml">
+            <list string="Transaccions Personals"
+                  decoration-muted="classification == 'personal'"
+                  decoration-success="state == 'processed'"
+                  decoration-info="state == 'classified'"
+                  default_order="date desc">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="amount" sum="Total" widget="monetary" options="{'currency_id': False}"/>
+                <field name="classification" widget="badge"
+                       decoration-muted="classification == 'unclassified'"
+                       decoration-info="classification == 'personal'"
+                       decoration-success="classification == 'onrentx'"
+                       decoration-warning="classification == 'marcatek'"
+                       decoration-primary="classification == 'trama'"
+                       decoration-danger="classification == 'shared'"
+                       />
+                <field name="category_id"/>
+                <field name="payment_method" optional="hide"/>
+                <field name="invoice_status" widget="badge"
+                       decoration-muted="invoice_status == 'not_needed'"
+                       decoration-warning="invoice_status == 'pending'"
+                       decoration-info="invoice_status == 'requested'"
+                       decoration-success="invoice_status == 'received'"/>
+                <field name="expense_count" string="Despeses"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'imported'"
+                       decoration-info="state == 'classified'"
+                       decoration-success="state == 'processed'"
+                       decoration-primary="state == 'reconciled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_trama_personal_transaction_form" model="ir.ui.view">
+        <field name="name">trama.personal.transaction.form</field>
+        <field name="model">trama.personal.transaction</field>
+        <field name="arch" type="xml">
+            <form string="Transaccio Personal">
+                <header>
+                    <!-- Shared processing button -->
+                    <button name="action_process_shared"
+                            string="Processar Compartida"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="classification != 'shared' or state == 'processed'"/>
+                    <!-- Reconcile button -->
+                    <button name="action_mark_reconciled"
+                            string="Marcar Conciliada"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'processed'"
+                            groups="trama_expense_society.group_trama_society_manager"/>
+                    <!-- Reset button -->
+                    <button name="action_reset_to_imported"
+                            string="Tornar a Importada"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state == 'imported'"
+                            confirm="Aixo eliminara les despeses generades. Continuar?"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="imported,classified,processed,reconciled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Descripcio"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Amazon AWS Mayo 2026"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Dades de la Transaccio">
+                            <field name="date"/>
+                            <field name="amount" widget="monetary" options="{'currency_id': False}"/>
+                            <field name="payment_method"/>
+                            <field name="source" readonly="1"/>
+                            <field name="bank_reference" readonly="1"
+                                   invisible="not bank_reference"/>
+                        </group>
+                        <group string="Classificacio">
+                            <field name="classification"/>
+                            <field name="society_type_id"
+                                   options="{'no_create': True}"
+                                   invisible="classification not in ('onrentx', 'marcatek', 'trama', 'shared')"/>
+                            <field name="category_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Shared distribution tab (only visible when shared) -->
+                        <page string="Distribucio Compartida" name="shared_distribution"
+                              invisible="classification != 'shared'">
+                            <field name="share_ids">
+                                <list editable="bottom">
+                                    <field name="society_type_id" options="{'no_create': True}"/>
+                                    <field name="percentage"/>
+                                    <field name="amount" readonly="1"/>
+                                </list>
+                            </field>
+                            <group>
+                                <div class="alert alert-info" role="alert">
+                                    Defineix el percentatge per cada societat. La suma ha de ser 100%%.
+                                    Prem "Processar Compartida" per generar les despeses.
+                                </div>
+                            </group>
+                        </page>
+
+                        <!-- Invoice tracking tab -->
+                        <page string="Factura i Rebut" name="invoice_tracking">
+                            <group>
+                                <group string="Estat de Factura">
+                                    <field name="invoice_status"/>
+                                    <field name="invoice_attachment_id"
+                                           widget="many2one"
+                                           context="{'default_res_model': 'trama.personal.transaction', 'default_res_id': id}"/>
+                                </group>
+                                <group string="Rebut">
+                                    <field name="receipt_attachment_id"
+                                           widget="many2one"
+                                           context="{'default_res_model': 'trama.personal.transaction', 'default_res_id': id}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Linked expenses tab -->
+                        <page string="Despeses Generades" name="expenses"
+                              invisible="not expense_ids">
+                            <field name="expense_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="society_type_id"/>
+                                    <field name="amount_total" widget="monetary" options="{'currency_id': False}"/>
+                                    <field name="category_id"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Notes tab -->
+                        <page string="Notes" name="notes">
+                            <field name="note"
+                                   placeholder="Notes addicionals sobre la transaccio..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_trama_personal_transaction_search" model="ir.ui.view">
+        <field name="name">trama.personal.transaction.search</field>
+        <field name="model">trama.personal.transaction</field>
+        <field name="arch" type="xml">
+            <search string="Cercar Transaccions">
+                <field name="name" string="Descripcio"/>
+                <field name="category_id"/>
+                <field name="bank_reference"/>
+                <separator/>
+                <!-- Classification filters -->
+                <filter string="Per Classificar" name="unclassified"
+                        domain="[('classification', '=', 'unclassified')]"/>
+                <filter string="Personal" name="personal"
+                        domain="[('classification', '=', 'personal')]"/>
+                <filter string="OnRentX" name="onrentx"
+                        domain="[('classification', '=', 'onrentx')]"/>
+                <filter string="MARCATEK" name="marcatek"
+                        domain="[('classification', '=', 'marcatek')]"/>
+                <filter string="Trama" name="trama"
+                        domain="[('classification', '=', 'trama')]"/>
+                <filter string="Compartida" name="shared"
+                        domain="[('classification', '=', 'shared')]"/>
+                <filter string="Ingres" name="income"
+                        domain="[('classification', '=', 'income')]"/>
+                <separator/>
+                <!-- Invoice status filters -->
+                <filter string="Factura Pendent" name="invoice_pending"
+                        domain="[('invoice_status', '=', 'pending')]"/>
+                <filter string="Factura Sol-licitada" name="invoice_requested"
+                        domain="[('invoice_status', '=', 'requested')]"/>
+                <filter string="Factura Rebuda" name="invoice_received"
+                        domain="[('invoice_status', '=', 'received')]"/>
+                <separator/>
+                <!-- State filters -->
+                <filter string="Importades" name="imported"
+                        domain="[('state', '=', 'imported')]"/>
+                <filter string="Classificades" name="classified"
+                        domain="[('state', '=', 'classified')]"/>
+                <filter string="Processades" name="processed"
+                        domain="[('state', '=', 'processed')]"/>
+                <filter string="Conciliades" name="reconciled"
+                        domain="[('state', '=', 'reconciled')]"/>
+                <separator/>
+                <!-- Date filters -->
+                <filter string="Aquest Mes" name="this_month"
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%%Y-%%m-%%d'))]"/>
+                <filter string="Mes Passat" name="last_month"
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(months=1, day=1)).strftime('%%Y-%%m-%%d')), ('date', '&lt;', (context_today() - relativedelta(day=1)).strftime('%%Y-%%m-%%d'))]"/>
+                <separator/>
+                <!-- Grouping -->
+                <group expand="0" string="Agrupar per">
+                    <filter string="Classificacio" name="group_classification"
+                            context="{'group_by': 'classification'}"/>
+                    <filter string="Categoria" name="group_category"
+                            context="{'group_by': 'category_id'}"/>
+                    <filter string="Estat" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Estat Factura" name="group_invoice"
+                            context="{'group_by': 'invoice_status'}"/>
+                    <filter string="Mes" name="group_month"
+                            context="{'group_by': 'date:month'}"/>
+                    <filter string="Metode Pagament" name="group_payment"
+                            context="{'group_by': 'payment_method'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Main action: kanban first (Diana's primary view) -->
+    <record id="action_trama_personal_transaction" model="ir.actions.act_window">
+        <field name="name">Transaccions</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.personal.transaction</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_trama_personal_transaction_search"/>
+        <field name="context">{'search_default_unclassified': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea la primera transaccio personal
+            </p>
+            <p>Les transaccions es classifiquen per societat i generen despeses automaticament.</p>
+        </field>
+    </record>
+
+    <!-- Server action for batch classification wizard -->
+    <record id="action_trama_transaction_classify_batch" model="ir.actions.act_window">
+        <field name="name">Classificar Transaccions</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">trama.transaction.classify.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_trama_personal_transaction"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+</odoo>

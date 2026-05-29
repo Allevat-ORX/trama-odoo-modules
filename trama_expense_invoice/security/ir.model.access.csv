@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_trama_expense_invoice_user,trama.expense.invoice user,model_trama_expense_invoice,trama_expense_society.group_trama_user,1,1,1,0
+access_trama_expense_invoice_manager,trama.expense.invoice manager,model_trama_expense_invoice,trama_expense_society.group_trama_manager,1,1,1,1

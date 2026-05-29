@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="trama_expense_invoice_view_tree" model="ir.ui.view">
+        <field name="name">trama.expense.invoice.view.tree</field>
+        <field name="model">trama.expense.invoice</field>
+        <field name="arch" type="xml">
+            <list string="Factures de Proveïdor">
+                <field name="expense_id"/>
+                <field name="vendor_id"/>
+                <field name="invoice_number"/>
+                <field name="amount" sum="Total"/>
+                <field name="date"/>
+                <field name="state"/>
+                <field name="society_type_id" optional="hide"/>
+                <field name="category_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="trama_expense_invoice_view_form" model="ir.ui.view">
+        <field name="name">trama.expense.invoice.view.form</field>
+        <field name="model">trama.expense.invoice</field>
+        <field name="arch" type="xml">
+            <form string="Factura de Proveïdor">
+                <header>
+                    <button name="action_mark_pending" type="object" string="Marcar Pendent"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_mark_received" type="object" string="Marcar Rebuda"
+                            class="btn-success" invisible="state not in ['draft', 'pending']"/>
+                    <button name="action_cancel" type="object" string="Cancel·lar"
+                            class="btn-danger" invisible="state == 'received'"/>
+                    <button name="action_reset_to_draft" type="object" string="Tornar a Borrador"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,received"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_expense" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="expense_id" widget="statinfo" string="Expense"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="invoice_number" placeholder="Número de Factura"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="expense_id" required="1"/>
+                            <field name="vendor_id" required="1"/>
+                            <field name="society_type_id" readonly="1"/>
+                            <field name="category_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="amount" required="1"/>
+                            <field name="date" required="1"/>
+                            <field name="state" required="1"/>
+                        </group>
+                    </group>
+                    <group string="Adjunts">
+                        <field name="attachment_ids" widget="many2many_binary" options="{'accepted_filetypes': ['application/pdf', 'application/xml']}"/>
+                    </group>
+                    <group string="Notes">
+                        <field name="note" placeholder="Notes internes..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="trama_expense_invoice_view_search" model="ir.ui.view">
+        <field name="name">trama.expense.invoice.view.search</field>
+        <field name="model">trama.expense.invoice</field>
+        <field name="arch" type="xml">
+            <search string="Search Invoices">
+                <field name="expense_id"/>
+                <field name="vendor_id"/>
+                <field name="invoice_number"/>
+                <field name="society_type_id"/>
+                <field name="category_id"/>
+                <separator/>
+                <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Pendent" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Rebuda" name="received" domain="[('state', '=', 'received')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Proveïdor" name="group_vendor" context="{'group_by': 'vendor_id'}"/>
+                    <filter string="Estat" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Categoria" name="group_category" context="{'group_by': 'category_id'}"/>
+                    <filter string="Societat" name="group_society" context="{'group_by': 'society_type_id'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="trama_expense_invoice_action" model="ir.actions.act_window">
+        <field name="name">Factures de Proveïdor</field>
+        <field name="res_model">trama.expense.invoice</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="trama_expense_invoice_view_search"/>
+        <field name="context">{'search_default_group_state': 1}</field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="trama_expense_invoice_menu"
+              name="Factures de Proveïdor"
+              parent="trama_expense_society.trama_society_expense_menu_root"
+              action="trama_expense_invoice_action"
+              sequence="20"/>
+
+</odoo>
