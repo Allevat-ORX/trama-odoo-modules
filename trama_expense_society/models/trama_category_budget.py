@@ -8,10 +8,7 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-# WaSender config for budget alerts
-WASENDER_TOKEN = '6c6a6a8d7bccb9473f86457b33abb46303e8e36f2108d507eae789ec4fcde6fc'
-WASENDER_SESSION = 'soporte'
-WASENDER_ALERT_PHONE = '523385263456'  # Aleix
+# WaSender config is stored in ir.config_parameter (never hardcode tokens)
 
 
 class TramaCategoryBudget(models.Model):
@@ -193,6 +190,13 @@ class TramaCategoryBudget(models.Model):
     def _send_whatsapp_alert(self):
         """Send WhatsApp message via WaSender API when budget is 100%+."""
         self.ensure_one()
+        get_param = self.env['ir.config_parameter'].sudo().get_param
+        token = get_param('trama.wasender_token')
+        session = get_param('trama.wasender_session', default='soporte')
+        phone = get_param('trama.wasender_alert_phone')
+        if not token or not phone:
+            _logger.warning('WaSender budget alert skipped: trama.wasender_token or trama.wasender_alert_phone not set in ir.config_parameter')
+            return
         message = (
             f'*ALERTA PRESUPUESTO EXCEDIDO*\n\n'
             f'Categoria: {self.category_id.name}\n'
@@ -206,12 +210,12 @@ class TramaCategoryBudget(models.Model):
             resp = requests.post(
                 'https://app.wasender.net/api/send-message',
                 headers={
-                    'Authorization': f'Bearer {WASENDER_TOKEN}',
+                    'Authorization': f'Bearer {token}',
                     'Content-Type': 'application/json',
                 },
                 json={
-                    'sessionId': WASENDER_SESSION,
-                    'to': WASENDER_ALERT_PHONE,
+                    'sessionId': session,
+                    'to': phone,
                     'text': message,
                 },
                 timeout=10,
