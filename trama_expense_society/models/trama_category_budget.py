@@ -208,7 +208,7 @@ class TramaCategoryBudget(models.Model):
         )
         try:
             resp = requests.post(
-                'https://app.wasender.net/api/send-message',
+                'https://wasenderapi.com/api/send-message',
                 headers={
                     'Authorization': f'Bearer {token}',
                     'Content-Type': 'application/json',
