@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Plan 10-04 / fix pass 10-05 — Onboarding mail templates -->
+    <!-- Plan 10-05 F6 fix: portal URL resolved via web.base.url system param
+         so links work from mobile networks outside the LAN. -->
+
+    <record id="mail_template_welcome_portal" model="mail.template">
+        <field name="name">Onboarding: Welcome Portal Credentials</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="subject">Bienvenido/a a OnRentX - Tu acceso al portal</field>
+        <field name="email_from">{{ (user.email_formatted or '') }}</field>
+        <field name="email_to">{{ object.work_email or object.private_email }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                <h2 style="color: #2c3e50;">Bienvenido/a a OnRentX, <t t-out="object.name"/>!</h2>
+                <p>Tu acceso al portal ya esta listo. Ya puedes comenzar tus cursos de onboarding:</p>
+                <ul>
+                    <li>
+                        <strong>Portal:</strong>
+                        <t t-set="portal_url" t-value="(object.env['ir.config_parameter'].sudo().get_param('web.base.url') or 'https://odoo.tramarental.com').rstrip('/') + (object.env['ir.config_parameter'].sudo().get_param('onrentx.onboarding.welcome_url_path') or '/slides')"/>
+                        <a t-att-href="portal_url" t-out="portal_url"/>
+                    </li>
+                    <li><strong>Usuario:</strong> tu correo electronico</li>
+                    <li><strong>Contrasena inicial:</strong> revisa el email de activacion (llegara por separado)</li>
+                </ul>
+                <p>Si tienes alguna duda, puedes escribirnos por WhatsApp al numero de OnRentX San Luis.</p>
+                <p><em>El equipo de OnRentX</em></p>
+            </div>
+        </field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <record id="mail_template_docs_reminder" model="mail.template">
+        <field name="name">Onboarding: Documents Reminder</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="subject">Recordatorio: Documentos pendientes de onboarding</field>
+        <field name="email_from">{{ (user.email_formatted or '') }}</field>
+        <field name="email_to">{{ object.work_email or object.private_email }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                <h3>Hola <t t-out="object.name"/>,</h3>
+                <p>Aun tenemos pendientes algunos documentos para completar tu onboarding:</p>
+                <ul>
+                    <li>INE (frente y reverso)</li>
+                    <li>CURP</li>
+                    <li>RFC</li>
+                    <li>Comprobante de domicilio (max 3 meses)</li>
+                    <li>Carta de vinculacion JCF</li>
+                </ul>
+                <p>Por favor envialos por WhatsApp cuanto antes.</p>
+            </div>
+        </field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <record id="mail_template_evaluation_kickoff" model="mail.template">
+        <field name="name">Onboarding: Evaluation Kickoff</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="subject">Siguiente paso: Evaluacion de tu onboarding</field>
+        <field name="email_from">{{ (user.email_formatted or '') }}</field>
+        <field name="email_to">{{ object.work_email or object.private_email }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                <h3>Felicidades <t t-out="object.name"/>!</h3>
+                <p>Has completado el curso base de onboarding. Ahora comienza la fase de evaluacion correspondiente a tu puesto.</p>
+                <p>Revisa el portal o pregunta a tu manager para los detalles.</p>
+            </div>
+        </field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+</odoo>

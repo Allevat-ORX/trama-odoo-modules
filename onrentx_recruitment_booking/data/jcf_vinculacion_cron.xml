@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Legacy cron (inactive - kept for reference) -->
+    <record id="cron_jcf_platform_monitor" model="ir.cron">
+        <field name="name">JCF Platform Monitor (SLP) [DEPRECATED - use cron_unified_jcf_monitor]</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_monitor_jcf_platform()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="cron_jcf_escalation_check" model="ir.cron">
+        <field name="name">JCF Escalation Check (N1 to N2) [inactive]</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_check_jcf_escalation()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- Phase 10: Unified JCF monitor (states + municipalities + login page) -->
+    <record id="cron_unified_jcf_monitor" model="ir.cron">
+        <field name="name">JCF Monitor Unificado (estados + municipios + login)</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_unified_jcf_monitor()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="param_jcf_vinculacion_triggered" model="ir.config_parameter">
+        <field name="key">onrentx.jcf_vinculacion_triggered</field>
+        <field name="value">false</field>
+    </record>
+</odoo>

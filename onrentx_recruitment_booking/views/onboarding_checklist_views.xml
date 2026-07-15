@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Plan 10-04: Onboarding Checklist tree + form + action + menu -->
+
+    <record id="view_onboarding_checklist_tree" model="ir.ui.view">
+        <field name="name">onrentx.onboarding.checklist.tree</field>
+        <field name="model">onrentx.onboarding.checklist</field>
+        <field name="arch" type="xml">
+            <list string="Onboarding Checklists">
+                <field name="employee_id"/>
+                <field name="applicant_id" optional="hide"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="docs_complete"/>
+                <field name="nda_signed"/>
+                <field name="portal_user_created"/>
+                <field name="courses_assigned"/>
+                <field name="evaluation_status"/>
+                <field name="evaluation_mode"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_onboarding_checklist_form" model="ir.ui.view">
+        <field name="name">onrentx.onboarding.checklist.form</field>
+        <field name="model">onrentx.onboarding.checklist</field>
+        <field name="arch" type="xml">
+            <form string="Onboarding Checklist">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="employee_id"/></h1>
+                    </div>
+                    <group>
+                        <field name="progress" widget="progressbar"/>
+                        <field name="applicant_id"/>
+                    </group>
+                    <notebook>
+                        <page string="Documents">
+                            <group>
+                                <field name="doc_comprobante"/>
+                                <field name="doc_curp"/>
+                                <field name="doc_ine"/>
+                                <field name="doc_rfc"/>
+                                <field name="doc_carta_jcf"/>
+                                <field name="docs_complete"/>
+                            </group>
+                        </page>
+                        <page string="NDA">
+                            <group>
+                                <field name="nda_sent"/>
+                                <field name="nda_signed"/>
+                                <field name="nda_sign_request_id"/>
+                            </group>
+                        </page>
+                        <page string="Portal &amp; Courses">
+                            <group>
+                                <field name="portal_user_id"/>
+                                <field name="portal_user_created"/>
+                                <field name="courses_assigned"/>
+                                <field name="base_course_completed"/>
+                            </group>
+                            <field name="course_ids"/>
+                        </page>
+                        <page string="Evaluation">
+                            <group>
+                                <field name="evaluation_mode"/>
+                                <field name="evaluation_status"/>
+                                <field name="evaluation_start_date"/>
+                                <field name="evaluation_end_date"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_onboarding_checklist" model="ir.actions.act_window">
+        <field name="name">Onboarding Checklists</field>
+        <field name="res_model">onrentx.onboarding.checklist</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Course Map views -->
+    <record id="view_onboarding_course_map_tree" model="ir.ui.view">
+        <field name="name">onrentx.onboarding.course.map.tree</field>
+        <field name="model">onrentx.onboarding.course.map</field>
+        <field name="arch" type="xml">
+            <list string="Course Maps">
+                <field name="job_id"/>
+                <field name="base_course_ids" widget="many2many_tags" optional="show"/>
+                <field name="specific_course_ids" widget="many2many_tags" optional="show"/>
+                <field name="evaluation_mode"/>
+                <field name="trial_week_days"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_onboarding_course_map_form" model="ir.ui.view">
+        <field name="name">onrentx.onboarding.course.map.form</field>
+        <field name="model">onrentx.onboarding.course.map</field>
+        <field name="arch" type="xml">
+            <form string="Course Map">
+                <sheet>
+                    <group>
+                        <field name="job_id"/>
+                        <field name="active"/>
+                        <field name="evaluation_mode"/>
+                        <field name="trial_week_days"
+                               invisible="evaluation_mode == 'exercises'"/>
+                    </group>
+                    <group string="Courses">
+                        <field name="base_course_ids" widget="many2many_tags"/>
+                        <field name="specific_course_ids" widget="many2many_tags"/>
+                    </group>
+                    <group string="Exercise Description"
+                           invisible="evaluation_mode == 'trial_week'">
+                        <field name="exercise_description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_onboarding_course_map" model="ir.actions.act_window">
+        <field name="name">Onboarding Course Maps</field>
+        <field name="res_model">onrentx.onboarding.course.map</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu entries under Recruitment > Configuration -->
+    <menuitem id="menu_onboarding_root"
+              name="Onboarding"
+              parent="hr_recruitment.menu_hr_recruitment_configuration"
+              sequence="50"/>
+
+    <menuitem id="menu_onboarding_checklist"
+              name="Checklists"
+              parent="menu_onboarding_root"
+              action="action_onboarding_checklist"
+              sequence="10"/>
+
+    <menuitem id="menu_onboarding_course_map"
+              name="Course Maps"
+              parent="menu_onboarding_root"
+              action="action_onboarding_course_map"
+              sequence="20"/>
+</odoo>

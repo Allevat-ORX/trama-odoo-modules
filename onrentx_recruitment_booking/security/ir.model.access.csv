@@ -1,5 +1,9 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_resource_booking_hr_officer,resource.booking.hr.officer,resource_booking.model_resource_booking,hr_recruitment.group_hr_recruitment_user,1,1,1,0
-access_resource_booking_type_hr_officer,resource.booking.type.hr.officer,resource_booking.model_resource_booking_type,hr_recruitment.group_hr_recruitment_user,1,0,0,0
-access_resource_booking_combination_hr_officer,resource.booking.combination.hr.officer,resource_booking.model_resource_booking_combination,hr_recruitment.group_hr_recruitment_user,1,0,0,0
-access_wa_chatbot_start_wizard,wa.chatbot.start.wizard,model_wa_chatbot_start_wizard,hr_recruitment.group_hr_recruitment_user,1,1,1,1
+access_recruitment_metrics_user,recruitment.metrics.user,model_recruitment_metrics,base.group_user,1,0,0,0
+access_recruitment_metrics_manager,recruitment.metrics.manager,model_recruitment_metrics,hr_recruitment.group_hr_recruitment_manager,1,1,1,1
+access_wa_chatbot_start_wizard,wa.chatbot.start.wizard,model_wa_chatbot_start_wizard,base.group_user,1,1,1,1
+access_wa_mass_send_wizard,wa.mass.send.wizard,model_wa_mass_send_wizard,base.group_user,1,1,1,1
+access_onboarding_checklist_user,access.onboarding.checklist.user,model_onrentx_onboarding_checklist,base.group_user,1,1,1,0
+access_onboarding_checklist_hr_manager,access.onboarding.checklist.hr.manager,model_onrentx_onboarding_checklist,hr.group_hr_manager,1,1,1,1
+access_onboarding_course_map_user,access.onboarding.course.map.user,model_onrentx_onboarding_course_map,base.group_user,1,0,0,0
+access_onboarding_course_map_hr_manager,access.onboarding.course.map.hr.manager,model_onrentx_onboarding_course_map,hr.group_hr_manager,1,1,1,1

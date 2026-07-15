@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="0">
+    <!--
+        Plan 10-04: mark "Contrato firmado" stage as hired_stage=True
+        so the "Create Employee" button appears in hr.applicant form.
+        Idempotent via noupdate=0 + function (will re-apply on module upgrade).
+    -->
+    <function model="hr.recruitment.stage" name="write">
+        <function model="hr.recruitment.stage" name="search">
+            <value eval="[('name', 'in', ['Contract Signed', 'Contrato firmado'])]"/>
+        </function>
+        <value eval="{'hired_stage': True}"/>
+    </function>
+</odoo>

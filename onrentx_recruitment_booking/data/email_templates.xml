@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- System Parameter for RRHH Email -->
+    <record id="recruitment_email_from" model="ir.config_parameter">
+        <field name="key">recruitment.email_from</field>
+        <field name="value">rrhh@onrentx.com</field>
+    </record>
+
+    <record id="recruitment_email_name" model="ir.config_parameter">
+        <field name="key">recruitment.email_name</field>
+        <field name="value">OnRentX Recursos Humanos</field>
+    </record>
+
+    <!-- Email Template 102: Interview Invitation -->
+    <record id="email_template_interview_invitation" model="mail.template">
+        <field name="name">Interview Invitation - RRHH</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="subject">Entrevista OnRentX - ${object.partner_name or object.name}</field>
+        <field name="email_from">${object.env['ir.config_parameter'].sudo().get_param('recruitment.email_from', 'rrhh@onrentx.com')}</field>
+        <field name="reply_to">rrhh@onrentx.com</field>
+        <field name="lang">${object.partner_id.lang or 'es_ES'}</field>
+        <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;"><tbody><tr><td align="center">
+<table border="0" cellpadding="0" cellspacing="0" width="590" style="padding: 24px; background-color: white; color: #454748; border-collapse:separate;">
+<tbody>
+    <!-- Header -->
+    <tr><td align="center" style="min-width: 590px;">
+        <img src="https://onrentx.com/logo.png" style="height: 50px;" alt="OnRentX Logo"/>
+    </td></tr>
+    <tr><td style="padding: 24px;">
+        <p>Hola ${object.partner_name or object.name},</p>
+
+        <p>
+            Gracias por tu interés en unirte a <strong>OnRentX</strong>. Hemos revisado tu perfil
+            y nos gustaría invitarte a una entrevista.
+        </p>
+
+        <p><strong>Puesto:</strong> ${object.job_id.name}</p>
+
+        <div style="background-color: #f9f9f9; padding: 16px; margin: 16px 0; border-left: 4px solid #0066CC;">
+            <p style="margin: 0;"><strong>Próximo paso:</strong></p>
+            <p>Haz clic en el siguiente botón para elegir el horario que mejor te funcione:</p>
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="${object.booking_portal_url or '#'}"
+                   style="background-color: #0066CC; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;"
+                >
+                    Agendar Entrevista
+                </a>
+            </div>
+        </div>
+
+        <p>
+            <strong>Horarios disponibles:</strong><br/>
+            Lunes a Viernes: 11:30 - 18:00<br/>
+            Sábados: 11:30 - 14:00
+        </p>
+
+        <p>
+            La entrevista será por <strong>Google Meet</strong> (link se incluirá en la confirmación).
+        </p>
+
+        <p>
+            Si tienes alguna pregunta, responde a este correo.
+        </p>
+
+        <p>
+            Saludos,<br/>
+            <strong>Equipo de Recursos Humanos</strong><br/>
+            OnRentX
+        </p>
+
+    </td></tr>
+
+    <!-- Footer -->
+    <tr><td align="center" style="padding: 16px; font-size: 12px; color: #999;">
+        <p>OnRentX - Plataforma de Renta de Maquinaria Pesada</p>
+        <p>Tel: +52 444 301 5205 | Email: rrhh@onrentx.com</p>
+    </td></tr>
+</tbody>
+</table>
+</td></tr></tbody>
+</table>
+        </field>
+    </record>
+
+    <!-- Email Template 103: Interview Reschedule -->
+    <record id="email_template_interview_reschedule" model="mail.template">
+        <field name="name">Interview Reschedule - RRHH</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="subject">Reagendar Entrevista - ${object.partner_name or object.name}</field>
+        <field name="email_from">${object.env['ir.config_parameter'].sudo().get_param('recruitment.email_from', 'rrhh@onrentx.com')}</field>
+        <field name="reply_to">rrhh@onrentx.com</field>
+        <field name="lang">${object.partner_id.lang or 'es_ES'}</field>
+        <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;"><tbody><tr><td align="center">
+<table border="0" cellpadding="0" cellspacing="0" width="590" style="padding: 24px; background-color: white; color: #454748; border-collapse:separate;">
+<tbody>
+    <tr><td style="padding: 24px;">
+        <p>Hola ${object.partner_name or object.name},</p>
+
+        <p>Tu entrevista programada necesita ser reagendada.</p>
+
+        <p>Por favor, selecciona un nuevo horario disponible:</p>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="${object.booking_portal_url or '#'}"
+               style="background-color: #0066CC; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;"
+            >
+                Reagendar
+            </a>
+        </div>
+
+        <p>Saludos,<br/>
+        <strong>Equipo de Recursos Humanos</strong><br/>
+        OnRentX</p>
+    </td></tr>
+</tbody>
+</table>
+</td></tr></tbody>
+</table>
+        </field>
+    </record>
+
+    <!-- Email Template: Rejection -->
+    <record id="email_template_rejection" model="mail.template">
+        <field name="name">Rejection - RRHH</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="subject">Gracias por tu interés en OnRentX</field>
+        <field name="email_from">${object.env['ir.config_parameter'].sudo().get_param('recruitment.email_from', 'rrhh@onrentx.com')}</field>
+        <field name="reply_to">rrhh@onrentx.com</field>
+        <field name="lang">${object.partner_id.lang or 'es_ES'}</field>
+        <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;"><tbody><tr><td align="center">
+<table border="0" cellpadding="0" cellspacing="0" width="590" style="padding: 24px; background-color: white; color: #454748; border-collapse:separate;">
+<tbody>
+    <tr><td style="padding: 24px;">
+        <p>Hola ${object.partner_name or object.name},</p>
+
+        <p>
+            Gracias por tu interés en unirte al equipo de <strong>OnRentX</strong>.
+        </p>
+
+        <p>
+            Hemos revisado tu perfil y en esta ocasión no continuaremos con tu proceso de selección.
+        </p>
+
+        <p>
+            Te deseamos mucho éxito en tus búsquedas laborales.
+        </p>
+
+        <p>Saludos,<br/>
+        <strong>Equipo de Recursos Humanos</strong><br/>
+        OnRentX</p>
+    </td></tr>
+</tbody>
+</table>
+</td></tr></tbody>
+</table>
+        </field>
+    </record>
+
+</odoo>

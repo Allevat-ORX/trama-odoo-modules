@@ -50,25 +50,13 @@
                                     icon="fa-whatsapp"
                                     confirm="Se enviará un WhatsApp al candidato iniciando el proceso de pre-screening. ¿Continuar?"/>
                             <button name="action_confirm_jcf"
-                            <button name="action_pause_wa_chatbot"
-                                    string="Pausar Chatbot"
-                                    type="object"
-                                    class="btn-warning"
-                                    invisible="wa_chat_state not in ('idle', 'rechazado', 'atendido_humano')"
-                                    icon="fa-pause"
-                                    confirm="Se pausará el chatbot. El candidato no recibirá respuestas automáticas hasta que se reactive. ¿Continuar?"/>
-                            <button name="action_resume_wa_chatbot"
-                                    string="Reactivar Chatbot"
-                                    type="object"
-                                    class="btn-success"
-                                    invisible="wa_chat_state != 'atendido_humano'"
-                                    icon="fa-play"/>
-                                    string="✅ Confirmar JCF y Enviar Cita"
+                                    string="Confirmar JCF y Enviar Cita"
                                     type="object"
                                     class="btn-success"
                                     invisible="wa_chat_state != 'pasa_pendiente_jcf'"
                                     icon="fa-check-circle"
-                                    confirm="Se verificará el JCF, se creará la cita y se enviará el link al candidato por email y WhatsApp. ¿Continuar?"/>
+                                    confirm="Se verificara el JCF, se creara la cita y se enviara el link al candidato por email y WhatsApp. Continuar?"/>
+
                             <button name="action_reset_wa_chatbot"
                                     string="Reiniciar Chatbot"
                                     type="object"

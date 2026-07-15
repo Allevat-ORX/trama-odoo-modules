@@ -1,23 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Wizard form (works for single and multi) -->
-    <record id="wa_chatbot_start_wizard_form" model="ir.ui.view">
-        <field name="name">wa.chatbot.start.wizard.form</field>
-        <field name="model">wa.chatbot.start.wizard</field>
+    <!-- Mass send wizard form -->
+    <record id="wa_mass_send_wizard_form" model="ir.ui.view">
+        <field name="name">wa.mass.send.wizard.form</field>
+        <field name="model">wa.mass.send.wizard</field>
         <field name="arch" type="xml">
-            <form string="Iniciar Pre-screening WhatsApp">
+            <form string="Enviar WhatsApp masivo">
                 <group>
-                    <field name="applicant_id" invisible="1"/>
                     <field name="applicant_ids" invisible="1"/>
+                    <field name="applicant_count" readonly="1" string="Candidatos"/>
                     <field name="wasender_config_id" options="{'no_create': True}"/>
+                    <field name="template_id" options="{'no_create': True}"/>
+                    <field name="message" placeholder="Escribe tu mensaje aqui. Usa {nombre}, {puesto} y {link_portal} como variables."/>
                 </group>
-                <div class="alert alert-info" role="alert"
-                     invisible="not applicant_ids">
-                    Se enviara el chatbot de pre-screening a
-                    <field name="applicant_ids" widget="many2many_tags" readonly="1" class="d-inline"/>
-                </div>
                 <footer>
-                    <button string="Enviar" name="action_start" type="object" class="btn-primary" icon="fa-whatsapp"/>
+                    <button string="Enviar a todos" name="action_send" type="object" class="btn-success" icon="fa-whatsapp"
+                            confirm="Se enviara WhatsApp a todos los candidatos seleccionados. Continuar?"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
@@ -25,8 +23,8 @@
     </record>
 
     <!-- Server action: appears in list view Action menu -->
-    <record id="action_wa_mass_start" model="ir.actions.server">
-        <field name="name">Iniciar WhatsApp masivo</field>
+    <record id="action_wa_mass_send" model="ir.actions.server">
+        <field name="name">Enviar WhatsApp masivo</field>
         <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
         <field name="binding_model_id" ref="hr_recruitment.model_hr_applicant"/>
         <field name="binding_view_types">list</field>
@@ -34,9 +32,9 @@
         <field name="code">
 if records:
     action = {
-        "name": "Iniciar Pre-screening WhatsApp",
+        "name": "Enviar WhatsApp masivo",
         "type": "ir.actions.act_window",
-        "res_model": "wa.chatbot.start.wizard",
+        "res_model": "wa.mass.send.wizard",
         "view_mode": "form",
         "target": "new",
         "context": {
