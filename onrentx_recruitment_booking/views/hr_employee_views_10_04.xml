@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Plan 10-04: Onboarding tab on hr.employee form -->
+    <record id="view_employee_form_onboarding_10_04" model="ir.ui.view">
+        <field name="name">hr.employee.form.onboarding.10_04</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Onboarding" name="onboarding">
+                    <group>
+                        <field name="onboarding_checklist_id" readonly="1"/>
+                        <field name="onboarding_progress" widget="progressbar"/>
+                    </group>
+                    <group string="Actions" col="4">
+                        <button name="action_create_portal_user" type="object"
+                                string="Create Portal User" class="btn-primary"
+                                invisible="user_id"/>
+                        <button name="action_enroll_courses_by_job" type="object"
+                                string="Enroll in Courses" class="btn-primary"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

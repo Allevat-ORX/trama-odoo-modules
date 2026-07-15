@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Plan 10-05 F7 fix: course map seeding moved to post_init_hook in
+        module root __init__.py (function post_init_seed_course_maps).
+
+        The previous implementation used <function model="..." name="create"/>
+        inside a noupdate="1" data file, which only ran on first install and
+        never again — meaning upgrades and fresh DB rebuilds where the data
+        file had already been recorded in ir.model.data skipped it.
+
+        The post_init_hook runs on install AND upgrade via the ORM, so it's
+        idempotent and survives DB rebuilds.
+
+        This file is kept as a placeholder (and still registered in
+        __manifest__.py) so that ir.model.data references from prior installs
+        don't become orphaned.
+    -->
+</odoo>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Report Action for Candidate Rankings -->
+    <record id="action_report_candidate_rankings" model="ir.actions.report">
+        <field name="name">Candidate Rankings</field>
+        <field name="model">hr.job</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">onrentx_recruitment_booking.report_candidate_rankings</field>
+        <field name="report_file">onrentx_recruitment_booking.report_candidate_rankings</field>
+        <field name="print_report_name">'Candidate Rankings - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="hr.model_hr_job"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Report Template -->
+    <template id="report_candidate_rankings">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <!-- Header -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h2>Candidate Rankings Report</h2>
+                            <h4>Position: <t t-esc="job.name"/></h4>
+                            <p>Generated on: <t t-esc="datetime.datetime.now().strftime('%Y-%m-%d %H:%M')"/></p>
+                            <p>Date Range: <t t-esc="date_from"/> to <t t-esc="date_to"/></p>
+                        </div>
+                    </div>
+
+                    <!-- Summary Statistics -->
+                    <div class="row mt32">
+                        <div class="col-12">
+                            <table class="table table-sm table-bordered">
+                                <tr class="table-primary">
+                                    <th>Total Candidates</th>
+                                    <th>Avg. Survey Score</th>
+                                    <th>Avg. Chat Score</th>
+                                    <th>Avg. Days to Interview</th>
+                                </tr>
+                                <tr>
+                                    <td><t t-esc="total_candidates"/></td>
+                                    <td><t t-esc="round(avg_survey, 2) if avg_survey else 'N/A'"/></td>
+                                    <td><t t-esc="round(avg_chat, 2) if avg_chat else 'N/A'"/></td>
+                                    <td><t t-esc="round(avg_days_interview, 2) if avg_days_interview else 'N/A'"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Candidates Table -->
+                    <div class="row mt32">
+                        <div class="col-12">
+                            <h3>Ranked Candidates</h3>
+                            <table class="table table-striped table-bordered">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Candidate</th>
+                                        <th>Stage</th>
+                                        <th>Survey Score</th>
+                                        <th>Chat Score</th>
+                                        <th>Overall</th>
+                                        <th>Days to Interview</th>
+                                        <th>Days to Hire</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="candidates" t-as="candidate">
+                                        <tr>
+                                            <td><t t-esc="candidate['rank']"/></td>
+                                            <td><t t-esc="candidate['name']"/></td>
+                                            <td><t t-esc="candidate['stage']"/></td>
+                                            <td><t t-esc="round(candidate['survey_score'], 2) if candidate['survey_score'] else 'N/A'"/></td>
+                                            <td><t t-esc="round(candidate['wa_chat_score'], 2) if candidate['wa_chat_score'] else 'N/A'"/></td>
+                                            <td><strong><t t-esc="round(candidate['overall_score'], 2)"/></strong></td>
+                                            <td>
+                                                <t t-if="candidate['days_to_interview']">
+                                                    <span t-att-class="'text-success' if candidate['days_to_interview'] &lt;= 7 else 'text-warning' if candidate['days_to_interview'] &lt;= 14 else 'text-danger'">
+                                                        <t t-esc="candidate['days_to_interview']"/>
+                                                    </span>
+                                                </t>
+                                                <t t-else="">In Progress</t>
+                                            </td>
+                                            <td>
+                                                <t t-if="candidate['days_to_hire']">
+                                                    <t t-esc="candidate['days_to_hire']"/>
+                                                </t>
+                                                <t t-else="">-</t>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Stage Distribution -->
+                    <div class="row mt32" t-if="stage_distribution">
+                        <div class="col-12">
+                            <h3>Pipeline Distribution</h3>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>Stage</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                </tr>
+                                <t t-foreach="stage_distribution" t-as="stage">
+                                    <tr>
+                                        <td><t t-esc="stage['name']"/></td>
+                                        <td><t t-esc="stage['count']"/></td>
+                                        <td><t t-esc="stage['percentage']"/>%</td>
+                                    </tr>
+                                </t>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="row mt64">
+                        <div class="col-12 text-center text-muted">
+                            <p>OnRentX Recruitment System - Confidential</p>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Add Button to Job Form -->
+    <record id="view_hr_job_ranking_button" model="ir.ui.view">
+        <field name="name">hr.job.rankings.button</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(action_report_candidate_rankings)d"
+                        string="Candidate Rankings"
+                        type="action"
+                        class="oe_highlight"
+                        icon="fa-trophy"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Wizard for Date Range Selection -->
+    <record id="view_candidate_rankings_wizard_form" model="ir.ui.view">
+        <field name="name">candidate.rankings.wizard.form</field>
+        <field name="model">candidate.rankings.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Candidate Rankings Report">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group>
+                        <field name="job_id"/>
+                        <field name="min_score"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate_report"
+                            string="Generate Report"
+                            type="object"
+                            class="oe_highlight"/>
+                    <button string="Cancel" class="oe_link" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_candidate_rankings_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Rankings Report</field>
+        <field name="res_model">candidate.rankings.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

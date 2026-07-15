@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_job_form_flowmingo" model="ir.ui.view">
+        <field name="name">hr.job.form.flowmingo</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group" position="after">
+                <group string="Flowmingo Video Interview">
+                    <field name="flowmingo_interview_url" widget="url"
+                           placeholder="https://talent.flowmingo.ai/interview/..."/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Plan 10-05: configuration parameters for onboarding automation.
+         noupdate=1 so admins can override these values in the UI without
+         being overwritten on module upgrade. -->
+
+    <record id="param_onboarding_base_channel_id" model="ir.config_parameter">
+        <field name="key">onrentx.onboarding.base_channel_id</field>
+        <field name="value">10</field>
+    </record>
+
+    <record id="param_onboarding_welcome_url_path" model="ir.config_parameter">
+        <field name="key">onrentx.onboarding.welcome_url_path</field>
+        <field name="value">/slides</field>
+    </record>
+</odoo>

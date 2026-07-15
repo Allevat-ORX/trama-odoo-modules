@@ -4,27 +4,26 @@
 """
 Auto-trigger pipeline when candidate completes survey.
 
-Survey done → AI evaluates responses → notify Aleix WA with summary.
-Aleix decides manually whether to start WA chatbot.
+Survey done → AI evaluates responses → auto-route:
+  score >= 3 → start WA chatbot pre-screening automatically
+  score < 3  → reject candidate with professional WA message
+
+Phase 10: Added _auto_route_by_score() for zero-intervention routing.
 """
 
 import json
-import difflib
 import logging
-import difflib
 import re
-import difflib
 
 import requests
-import difflib
 from markupsafe import Markup
 
 from odoo import api, models
 
 _logger = logging.getLogger(__name__)
 
-LITELLM_URL = "http://159.54.142.132:4000/v1/chat/completions"
-LITELLM_KEY = "sk-orx-kAErmWcz1m0tGrS7IsQ4BmALzaAzeeXo"
+# LiteLLM URL loaded from ir.config_parameter at runtime (see _call_litellm)
+# LiteLLM key loaded from ir.config_parameter at runtime (see _call_litellm)
 ALEIX_WA = "+524424751707"
 
 
@@ -81,23 +80,11 @@ class SurveyUserInput(models.Model):
             subtype_xmlid="mail.mt_note",
         )
 
-        # 2. AI evaluate survey responses + notify Aleix
+        # 2. AI evaluate survey responses + auto-route
         self._evaluate_and_notify(applicant)
 
-        # 3. Create activity for recruiter
-        if applicant.user_id:
-            try:
-                applicant.activity_schedule(
-                    "mail.mail_activity_data_todo",
-                    summary="Cuestionario completado — revisar %s" % applicant.partner_name,
-                    note="Revisar evaluación AI del cuestionario. Si cumple requisitos, iniciar pre-screening WA.",
-                    user_id=applicant.user_id.id,
-                )
-            except Exception:
-                pass
-
     def _evaluate_and_notify(self, applicant):
-        """Evaluate survey responses with AI and notify Aleix via WA."""
+        """Evaluate survey responses with AI and auto-route by score."""
         # Build survey responses text
         survey_text = ""
         for line in self.user_input_line_ids:
@@ -155,9 +142,9 @@ Responde en JSON:
                 "max_tokens": 300,
                 "temperature": 0.2,
             })
-            req = urllib.request.Request(LITELLM_URL, method="POST")
+            req = urllib.request.Request(self.env["ir.config_parameter"].sudo().get_param("onrentx.recruitment.litellm_url", "http://159.54.142.132:4000/v1/chat/completions"), method="POST")
             req.add_header("Content-Type", "application/json")
-            req.add_header("Authorization", "Bearer %s" % LITELLM_KEY)
+            req.add_header("Authorization", "Bearer %s" % self.env["ir.config_parameter"].sudo().get_param("onrentx.recruitment.litellm_api_key", ""))
             req.data = payload.encode()
             resp = urllib.request.urlopen(req, timeout=60)
             result = json.loads(resp.read())
@@ -202,50 +189,155 @@ Responde en JSON:
             subtype_xmlid="mail.mt_note",
         )
 
-        # Notify Aleix via WA
-        emoji = "✅" if recomendacion == "INICIAR_SCREENING" else "⚠️" if recomendacion == "REVISAR" else "❌"
+        # Parse score number for routing
+        try:
+            score_num = float(score)
+        except (ValueError, TypeError):
+            score_num = 0
+
+        # Notify Aleix via WA (for visibility — no action required from him)
+        self._notify_aleix_with_score(applicant, score_num, resumen, recomendacion, red_flags)
+
+        # AUTO-ROUTE based on score
+        self._auto_route_by_score(applicant, score_num, resumen)
+
+    def _auto_route_by_score(self, applicant, score_num, resumen):
+        """
+        Auto-route candidate based on survey score.
+        score >= 3 → auto-start WA chatbot pre-screening
+        score < 3  → reject with professional WA + move to Rechazado stage
+        """
+        PASS_THRESHOLD = 3.0
+
+        if score_num >= PASS_THRESHOLD:
+            # ── PASS: Auto-start WA chatbot pre-screening ──
+            _logger.info(
+                "Auto-routing applicant %d (%s): score=%.1f >= %.1f → starting chatbot",
+                applicant.id, applicant.partner_name, score_num, PASS_THRESHOLD,
+            )
+
+            # Get San Luis WaSender config (config_id=4 explicitly)
+            wasender_config = applicant.env["onrentx.wasender.config"].sudo().browse(4)
+            if not wasender_config.exists() or not wasender_config.api_key:
+                wasender_config = applicant._get_wasender_config()
+
+            # Move to Pre-screening stage if it exists
+            prescreening_stage = applicant.env["hr.recruitment.stage"].sudo().search([
+                "|",
+                ("name", "ilike", "Pre-screening"),
+                ("name", "ilike", "Preseleccion"),
+            ], limit=1)
+            if prescreening_stage:
+                applicant.stage_id = prescreening_stage.id
+
+            # Start WA chatbot
+            try:
+                applicant._start_wa_chatbot(wasender_config)
+                _logger.info(
+                    "Chatbot started for applicant %d (%s)", applicant.id, applicant.partner_name
+                )
+            except Exception as e:
+                _logger.error(
+                    "Failed to start chatbot for applicant %d: %s", applicant.id, e
+                )
+
+            # Post success in chatter
+            applicant.with_user(1).message_post(
+                body=Markup(
+                    '<div style="background:#e8f5e9;padding:8px;'
+                    'border-left:4px solid #4CAF50;border-radius:6px;">'
+                    '<b>✅ Auto-routing:</b> Score %.1f/5 → Pre-screening WA iniciado automáticamente.<br/>'
+                    'Resumen: %s</div>'
+                ) % (score_num, resumen),
+                message_type="comment",
+                subtype_xmlid="mail.mt_note",
+            )
+
+        else:
+            # ── FAIL: Auto-reject candidate ──
+            _logger.info(
+                "Auto-routing applicant %d (%s): score=%.1f < %.1f → rejecting",
+                applicant.id, applicant.partner_name, score_num, PASS_THRESHOLD,
+            )
+
+            # Move to Rechazado stage
+            rechazado_stage = applicant.env["hr.recruitment.stage"].sudo().search([
+                "|",
+                ("name", "ilike", "Rechaz"),
+                ("name", "ilike", "No pas"),
+            ], limit=1)
+            if rechazado_stage:
+                applicant.stage_id = rechazado_stage.id
+
+            # Set WA state and send rejection
+            applicant.wa_chat_state = "rechazado"
+            try:
+                applicant._send_wa_rejection(score_num)
+            except Exception as e:
+                _logger.error(
+                    "Failed to send rejection WA for applicant %d: %s", applicant.id, e
+                )
+
+            # Post rejection in chatter
+            applicant.with_user(1).message_post(
+                body=Markup(
+                    '<div style="background:#fff3e0;padding:8px;'
+                    'border-left:4px solid #FF9800;border-radius:6px;">'
+                    '<b>⚠️ Auto-routing:</b> Score %.1f/5 → Rechazado automáticamente.<br/>'
+                    'Resumen: %s<br/>'
+                    'WA de rechazo enviado al candidato.</div>'
+                ) % (score_num, resumen),
+                message_type="comment",
+                subtype_xmlid="mail.mt_note",
+            )
+
+    def _notify_aleix_with_score(self, applicant, score_num, resumen, recomendacion, red_flags=None):
+        """Send score notification to Aleix via WA (informational only)."""
         wa_config = self.env["onrentx.wasender.config"].sudo().search([
             ("api_key", "!=", False),
         ], limit=1)
 
-        if wa_config:
-            flags_text = ""
-            if red_flags:
-                flags_text = "\n⚠️ " + ", ".join(red_flags)
+        if not wa_config:
+            return
 
-            notify_msg = (
-                "%s *Cuestionario completado*\n\n"
-                "Candidato: *%s*\n"
-                "Puesto: %s\n"
-                "Score: %s/5 | Edad: %s\n"
-                "JCF: %s\n"
-                "%s\n"
-                "%s\n\n"
-                "Recomendación: *%s*\n"
-                "👉 Iniciar chatbot WA desde Odoo si procede"
-            ) % (
-                emoji,
-                applicant.partner_name,
-                job_name,
-                score, edad,
-                "Cumple" if cumple_jcf else "No cumple / Revisar",
-                resumen,
-                flags_text,
-                recomendacion,
+        emoji = "✅" if score_num >= 3 else "❌"
+        action_text = "Auto-iniciando pre-screening WA" if score_num >= 3 else "Rechazando automáticamente"
+        flags_text = ""
+        if red_flags:
+            flags_text = "\n⚠️ " + ", ".join(red_flags)
+
+        job_name = applicant.job_id.name if applicant.job_id else "No especificado"
+        notify_msg = (
+            "%s *Cuestionario evaluado*\n\n"
+            "Candidato: *%s*\n"
+            "Puesto: %s\n"
+            "Score: %.1f/5\n"
+            "%s\n"
+            "%s\n\n"
+            "Acción: %s"
+        ) % (
+            emoji,
+            applicant.partner_name,
+            job_name,
+            score_num,
+            resumen,
+            flags_text,
+            action_text,
+        )
+
+        try:
+            requests.post(
+                "https://wasenderapi.com/api/send-message",
+                json={"to": ALEIX_WA, "text": notify_msg},
+                headers={
+                    "Authorization": "Bearer %s" % wa_config.api_key,
+                    "Content-Type": "application/json",
+                },
+                timeout=15,
             )
-            try:
-                requests.post(
-                    "https://wasenderapi.com/api/send-message",
-                    json={"to": ALEIX_WA, "text": notify_msg},
-                    headers={
-                        "Authorization": "Bearer %s" % wa_config.api_key,
-                        "Content-Type": "application/json",
-                    },
-                    timeout=15,
-                )
-                _logger.info("Survey eval notification sent to Aleix WA for applicant %d", applicant.id)
-            except Exception as e:
-                _logger.warning("Failed to notify Aleix: %s", e)
+            _logger.info("Score notification sent to Aleix for applicant %d", applicant.id)
+        except Exception as e:
+            _logger.warning("Failed to notify Aleix: %s", e)
 
     def _find_applicant(self):
         """Find hr.applicant linked to this survey response."""
@@ -275,9 +367,25 @@ Responde en JSON:
                 return applicant
 
         # 4. Via fuzzy name matching (fallback)
-        if not applicant and self.partner_id and self.partner_id.name:
+        if self.partner_id and self.partner_id.name:
             applicant = self._fuzzy_find_applicant_by_name(self.partner_id.name)
             if applicant:
                 return applicant
 
+        return None
+
+    def _fuzzy_find_applicant_by_name(self, name):
+        """Fuzzy name match for applicant lookup."""
+        import difflib
+        all_applicants = self.env["hr.applicant"].sudo().search([
+            ("partner_name", "!=", False),
+        ], limit=200)
+        if not all_applicants:
+            return None
+        names = [a.partner_name for a in all_applicants]
+        matches = difflib.get_close_matches(name, names, n=1, cutoff=0.85)
+        if matches:
+            for a in all_applicants:
+                if a.partner_name == matches[0]:
+                    return a
         return None

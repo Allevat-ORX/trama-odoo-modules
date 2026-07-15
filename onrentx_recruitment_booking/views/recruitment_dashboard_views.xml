@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Recruitment Metrics Tree View -->
+    <record id="view_recruitment_metrics_tree" model="ir.ui.view">
+        <field name="name">recruitment.metrics.tree</field>
+        <field name="model">recruitment.metrics</field>
+        <field name="arch" type="xml">
+            <list string="Recruitment Metrics">
+                <field name="date"/>
+                <field name="stage"/>
+                <field name="job_id" optional="show"/>
+                <field name="count"/>
+                <field name="avg_time_days" optional="show"/>
+                <field name="conversion_rate" widget="progressbar"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Recruitment Metrics Graph View -->
+    <record id="view_recruitment_metrics_graph" model="ir.ui.view">
+        <field name="name">recruitment.metrics.graph</field>
+        <field name="model">recruitment.metrics</field>
+        <field name="arch" type="xml">
+            <graph string="Recruitment Funnel" type="bar">
+                <field name="stage" type="row"/>
+                <field name="count" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Recruitment Metrics Kanban View (Funnel) -->
+    <record id="view_recruitment_metrics_kanban" model="ir.ui.view">
+        <field name="name">recruitment.metrics.kanban</field>
+        <field name="model">recruitment.metrics</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="stage"/>
+                <field name="count"/>
+                <field name="conversion_rate"/>
+                <field name="avg_time_days"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click o_kanban_record">
+                            <div class="o_kanban_detail">
+                                <strong class="o_kanban_record_title">
+                                    <field name="stage"/>
+                                </strong>
+                                <div class="o_kanban_tags_section"/>
+                                <div class="o_kanban_record_body">
+                                    <div>Count: <field name="count"/></div>
+                                    <div>Avg Time: <field name="avg_time_days"/> days</div>
+                                    <div>Conversion: <field name="conversion_rate"/>%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Dashboard Action -->
+    <record id="action_recruitment_metrics" model="ir.actions.act_window">
+        <field name="name">Recruitment Dashboard</field>
+        <field name="res_model">recruitment.metrics</field>
+        <field name="view_mode">kanban,graph,list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No metrics data available.
+            </p>
+            <p>
+                Metrics are computed automatically by the daily cron job.
+            </p>
+        </field>
+    </record>
+
+    <!-- Funnel Dashboard Action -->
+    <record id="action_recruitment_funnel" model="ir.actions.act_window">
+        <field name="name">Recruitment Funnel</field>
+        <field name="res_model">recruitment.metrics</field>
+        <field name="view_mode">graph,kanban,list</field>
+        <field name="context">{'search_default_group_by_stage': 1}</field>
+    </record>
+
+    <!-- Recruitment Dashboard Menu -->
+    <menuitem id="menu_recruitment_dashboard_root"
+              name="Dashboard"
+              parent="hr_recruitment.menu_hr_recruitment_root"
+              sequence="5"/>
+
+    <menuitem id="menu_recruitment_metrics"
+              name="Recruitment Dashboard"
+              parent="menu_recruitment_dashboard_root"
+              action="action_recruitment_metrics"
+              sequence="10"/>
+
+    <menuitem id="menu_recruitment_funnel"
+              name="Funnel View"
+              parent="menu_recruitment_dashboard_root"
+              action="action_recruitment_funnel"
+              sequence="20"/>
+
+    <!-- Search View with Filters -->
+    <record id="view_recruitment_metrics_search" model="ir.ui.view">
+        <field name="name">recruitment.metrics.search</field>
+        <field name="model">recruitment.metrics</field>
+        <field name="arch" type="xml">
+            <search string="Search Metrics">
+                <field name="date"/>
+                <field name="stage"/>
+                <field name="job_id"/>
+                <filter string="Today" name="today" domain="[('date', '=', context_today())]"/>
+                <filter string="This Week" name="this_week" domain="[('date', '&gt;=', context_today() - datetime.timedelta(days=7))]"/>
+                <filter string="This Month" name="this_month" domain="[('date', '&gt;=', context_today() - datetime.timedelta(days=30))]"/>
+                <filter string="Last 90 Days" name="last_90" domain="[('date', '&gt;=', context_today() - datetime.timedelta(days=90))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Stage" name="group_by_stage" context="{'group_by': 'stage'}"/>
+                    <filter string="Date" name="group_by_date" context="{'group_by': 'date:day'}"/>
+                    <filter string="Job Position" name="group_by_job" context="{'group_by': 'job_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>
