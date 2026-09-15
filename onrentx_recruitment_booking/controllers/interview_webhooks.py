@@ -15,6 +15,8 @@ from markupsafe import Markup
 from odoo import http
 from odoo.http import request
 
+from ..llm_config import get_litellm_config
+
 _logger = logging.getLogger(__name__)
 
 OTTER_API_KEY_PARAM = "onrentx.otter_webhook_api_key"
@@ -409,11 +411,10 @@ REGLAS ESTRICTAS:
             share_url,
         )
 
-        # Call LiteLLM (Groq Llama 3.3 70B - free, fast)
-        litellm_url = "http://159.54.142.132:4000/v1/chat/completions"
-        litellm_key = request.env['ir.config_parameter'].sudo().get_param('onrentx.recruitment.litellm_api_key', '')
+        # Call the configured recruitment model through LiteLLM.
+        llm = get_litellm_config(request.env)
         payload = json.dumps({
-            "model": "groq-llama",
+            "model": llm.model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 4000,
             "temperature": 0.2,
@@ -422,9 +423,9 @@ REGLAS ESTRICTAS:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                req = urllib.request.Request(litellm_url, method="POST")
+                req = urllib.request.Request(llm.url, method="POST")
                 req.add_header("Content-Type", "application/json")
-                req.add_header("Authorization", "Bearer %s" % litellm_key)
+                req.add_header("Authorization", "Bearer %s" % llm.api_key)
                 req.data = payload.encode()
                 resp = urllib.request.urlopen(req, timeout=120)
                 result = json.loads(resp.read())
