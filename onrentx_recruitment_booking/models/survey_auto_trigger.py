@@ -21,10 +21,10 @@ from markupsafe import Markup
 
 from odoo import api, models
 
+from ..llm_config import get_litellm_config
+
 _logger = logging.getLogger(__name__)
 
-LITELLM_URL = "http://159.54.142.132:4000/v1/chat/completions"
-LITELLM_KEY = "sk-orx-kAErmWcz1m0tGrS7IsQ4BmALzaAzeeXo"
 ALEIX_WA = "+524424751707"
 
 
@@ -149,15 +149,16 @@ Responde en JSON:
 
         import urllib.request
         try:
+            llm = get_litellm_config(self.env)
             payload = json.dumps({
-                "model": "groq-llama",
+                "model": llm.model,
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 300,
                 "temperature": 0.2,
             })
-            req = urllib.request.Request(LITELLM_URL, method="POST")
+            req = urllib.request.Request(llm.url, method="POST")
             req.add_header("Content-Type", "application/json")
-            req.add_header("Authorization", "Bearer %s" % LITELLM_KEY)
+            req.add_header("Authorization", "Bearer %s" % llm.api_key)
             req.data = payload.encode()
             resp = urllib.request.urlopen(req, timeout=60)
             result = json.loads(resp.read())

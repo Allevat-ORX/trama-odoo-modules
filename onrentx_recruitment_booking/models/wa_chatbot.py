@@ -26,6 +26,8 @@ import difflib
 from markupsafe import Markup
 
 from odoo import api, fields, models, _
+
+from ..llm_config import get_litellm_config
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -154,18 +156,19 @@ class HrApplicantChatbot(models.Model):
         return self._send_wa_with_config(phone, message, config)
 
     def _call_llm(self, prompt, max_tokens=2000):
-        """Call LiteLLM (Groq) and return response text."""
+        """Call the configured recruitment model through LiteLLM."""
         import urllib.request
         try:
+            llm = get_litellm_config(self.env)
             payload = json.dumps({
-                "model": self.env['ir.config_parameter'].sudo().get_param('onrentx.recruitment.litellm_model', 'groq-llama'),
+                "model": llm.model,
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": max_tokens,
                 "temperature": 0.3,
             })
-            req = urllib.request.Request(self.env['ir.config_parameter'].sudo().get_param('onrentx.recruitment.litellm_url', 'http://159.54.142.132:4000/v1/chat/completions'), method="POST")
+            req = urllib.request.Request(llm.url, method="POST")
             req.add_header("Content-Type", "application/json")
-            req.add_header("Authorization", "Bearer %s" % self.env['ir.config_parameter'].sudo().get_param('onrentx.recruitment.litellm_api_key', ''))
+            req.add_header("Authorization", "Bearer %s" % llm.api_key)
             req.data = payload.encode()
             resp = urllib.request.urlopen(req, timeout=60)
             result = json.loads(resp.read())

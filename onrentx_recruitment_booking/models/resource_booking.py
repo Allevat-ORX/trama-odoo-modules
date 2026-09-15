@@ -5,6 +5,8 @@ from markupsafe import Markup
 
 from odoo import api, fields, models, _
 
+from ..llm_config import get_litellm_config
+
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -173,8 +175,7 @@ class ResourceBooking(models.Model):
         import re
         import urllib.request
 
-        LITELLM_URL = "http://159.54.142.132:4000/v1/chat/completions"
-        LITELLM_KEY = self.env["ir.config_parameter"].sudo().get_param("onrentx.recruitment.litellm_api_key", "")
+        llm = get_litellm_config(self.env)
 
         # Gather all candidate data
         job_name = applicant.job_id.name if applicant.job_id else "No especificado"
@@ -348,15 +349,15 @@ REGLAS ESTRICTAS — LEE ANTES DE GENERAR:
         )
 
         payload = json.dumps({
-            "model": "mistral-large",
+            "model": llm.model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 3000,
             "temperature": 0.2,
         })
 
-        req = urllib.request.Request(LITELLM_URL, method="POST")
+        req = urllib.request.Request(llm.url, method="POST")
         req.add_header("Content-Type", "application/json")
-        req.add_header("Authorization", "Bearer %s" % LITELLM_KEY)
+        req.add_header("Authorization", "Bearer %s" % llm.api_key)
         req.data = payload.encode()
         resp = urllib.request.urlopen(req, timeout=120)
         result = json.loads(resp.read())

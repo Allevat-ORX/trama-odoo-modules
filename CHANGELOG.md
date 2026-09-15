@@ -4,8 +4,13 @@ Todos los cambios notables en el módulo `onrentx_recruitment_booking`.
 
 ## [Unreleased]
 
+### Changed
+- **AIS-430**: Centralized the recruitment LiteLLM endpoint, credential lookup, and model alias across chatbot, survey, interview briefing, and post-interview evaluation flows. The default alias is now `bedrock-mistral`, configurable through `onrentx.recruitment.litellm_model`.
+
 ### Security
+- Removed embedded credential material from recruitment configuration and deleted tracked local backups containing sensitive values. Runtime credentials remain supplied through Odoo system parameters only.
 - Migrar API keys hardcodeadas a `ir.config_parameter`
+- Automatic WhatsApp transport behavior is unchanged; this fix does not enable or alter outbound delivery.
 - Implementar rate limiting en webhooks
 - Agregar signature verification para webhooks Fathom
 

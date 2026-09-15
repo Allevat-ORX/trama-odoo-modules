@@ -1,0 +1,15 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+
+# Local backups and generated files
+*.bak.*
+
+# Secrets and local configuration
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+CREDENTIALS*.md
+CREDENTIALS*.json
